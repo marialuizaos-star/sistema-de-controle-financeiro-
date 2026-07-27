@@ -1,0 +1,27 @@
+{% extends "base_app.html" %}
+{% block titulo %}Usuários — SCF PROPEG{% endblock %}
+{% block conteudo %}
+<div class="card">
+    <h2>Usuários cadastrados</h2>
+    <table>
+        <tr>
+            <th>Nome</th>
+            <th>E-mail</th>
+            <th>Perfil</th>
+            <th>Status</th>
+            <th style="text-align:right">Ações</th>
+        </tr>
+        {% for usuario in usuarios %}
+        <tr>
+            <td>{{ usuario.nome }}</td>
+            <td>{{ usuario.email }}</td>
+            <td>{{ usuario.papel }}</td>
+            <td>{{ "Ativo" if usuario.ativo else "Inativo" }}</td>
+            <td style="text-align:right"><a href="{{ url_for('auth.editar_usuario', usuario_id=usuario.id) }}">Editar</a></td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5" class="link-muted">Nenhum usuário cadastrado ainda.</td></tr>
+        {% endfor %}
+    </table>
+</div>
+{% endblock %}

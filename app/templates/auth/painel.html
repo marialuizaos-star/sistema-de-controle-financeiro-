@@ -1,0 +1,31 @@
+{% extends "base_app.html" %}
+{% block titulo %}Início — SCF PROPEG{% endblock %}
+{% block conteudo %}
+<div class="card">
+    <h2>Bem-vindo(a), {{ current_user.nome }}</h2>
+    <p class="link-muted">Perfil: {{ current_user.papel }}</p>
+</div>
+
+<div class="card">
+    <h2>Projetos recentes</h2>
+    <table>
+        <tr>
+            <th>Nome</th>
+            <th>Valor total</th>
+            <th>Status</th>
+            <th style="text-align:right">Ações</th>
+        </tr>
+        {% for projeto in projetos %}
+        <tr>
+            <td>{{ projeto.nome }}</td>
+            <td>R$ {{ projeto.valor_total | moeda }}</td>
+            <td>{{ projeto.status }}</td>
+            <td style="text-align:right"><a href="{{ url_for('projetos.editar_projeto', projeto_id=projeto.id) }}">Ver</a></td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4" class="link-muted">Nenhum projeto cadastrado ainda.</td></tr>
+        {% endfor %}
+    </table>
+    <p style="margin-top:14px"><a href="{{ url_for('projetos.listar_projetos') }}">Ver todos os projetos</a></p>
+</div>
+{% endblock %}

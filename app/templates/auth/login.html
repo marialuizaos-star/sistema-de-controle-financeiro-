@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block titulo %}Login — SCF PROPEG{% endblock %}
+{% block conteudo %}
+<h2>Entrar</h2>
+<form method="POST">
+    {{ form.hidden_tag() }}
+
+    <label>{{ form.email.label }}</label>
+    {{ form.email() }}
+    {% for erro in form.email.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
+
+    <label>{{ form.senha.label }}</label>
+    {{ form.senha() }}
+    {% for erro in form.senha.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
+
+    <label>{{ form.lembrar() }} {{ form.lembrar.label }}</label>
+
+    <button type="submit">Entrar</button>
+</form>
+<p><a href="{{ url_for('auth.recuperar_senha') }}">Esqueci minha senha</a></p>
+{% endblock %}

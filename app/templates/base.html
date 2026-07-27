@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block titulo %}SCF PROPEG{% endblock %}</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 480px; margin: 60px auto; color: #1e293b; }
+        .flash { padding: 10px 14px; border-radius: 6px; margin-bottom: 14px; }
+        .flash.erro { background: #fee2e2; color: #991b1b; }
+        .flash.sucesso { background: #dcfce7; color: #166534; }
+        label { display: block; margin-top: 12px; font-weight: bold; }
+        input, select { width: 100%; padding: 8px; margin-top: 4px; box-sizing: border-box; }
+        button { margin-top: 18px; padding: 10px 16px; background: #4f46e5; color: white; border: none; border-radius: 6px; cursor: pointer; }
+        .erros-campo { color: #991b1b; font-size: 13px; }
+    </style>
+</head>
+<body>
+    {% with mensagens = get_flashed_messages(with_categories=true) %}
+        {% for categoria, mensagem in mensagens %}
+            <div class="flash {{ categoria }}">{{ mensagem }}</div>
+        {% endfor %}
+    {% endwith %}
+
+    {% block conteudo %}{% endblock %}
+</body>
+</html>

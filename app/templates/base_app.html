@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block titulo %}SCF PROPEG{% endblock %}</title>
+    <style>
+        :root {
+            --navy: #2B3A55;
+            --ink: #1E293B;
+            --muted: #64748B;
+            --bg: #F1F5F9;
+            --card: #FFFFFF;
+            --border: #E2E8F0;
+            --accent: #4F46E5;
+            --accent-soft: #EEF0FF;
+            --danger: #DC2626;
+            --danger-soft: #FEF2F2;
+            --success: #16A34A;
+        }
+        * { box-sizing: border-box; }
+        body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--ink); }
+        .topbar { height: 6px; background: var(--navy); }
+        header { background: #fff; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 14px 24px; }
+        .brand { display: flex; align-items: center; gap: 12px; }
+        .brand h1 { font-size: 17px; margin: 0; font-weight: 700; }
+        .logo { width: 36px; height: 36px; border-radius: 8px; background: var(--accent-soft); display: flex; align-items: center; justify-content: center; }
+        .user { display: flex; align-items: center; gap: 10px; }
+        .avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--navy); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; }
+        .user-name { font-weight: 600; font-size: 14px; }
+        .user-sub { font-size: 12px; color: var(--muted); }
+        nav { background: #fff; border-bottom: 1px solid var(--border); display: flex; gap: 6px; padding: 10px 20px; }
+        .tab { border: none; background: transparent; padding: 8px 14px; border-radius: 8px; font-size: 14px; font-weight: 600; color: var(--muted); text-decoration: none; }
+        .tab.active { background: var(--accent-soft); color: var(--accent); }
+        main { max-width: 1080px; margin: 24px auto; padding: 0 20px; }
+        .card { background: var(--card); border-radius: 14px; box-shadow: 0 1px 3px rgba(0,0,0,.06); padding: 20px; margin-bottom: 20px; }
+        .card h2 { font-size: 17px; margin: 0 0 14px 0; font-weight: 700; }
+        table { width: 100%; border-collapse: collapse; }
+        th { text-align: left; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; background: #F8FAFC; padding: 10px 12px; border-bottom: 1px solid var(--border); }
+        td { padding: 12px; border-bottom: 1px solid var(--border); font-size: 14px; }
+        tr:last-child td { border-bottom: none; }
+        .flash { padding: 10px 14px; border-radius: 8px; margin-bottom: 14px; }
+        .flash.erro { background: var(--danger-soft); color: var(--danger); }
+        .flash.sucesso { background: #ECFDF5; color: var(--success); }
+        label { display: block; margin-top: 12px; font-weight: 600; font-size: 13px; }
+        input, select { width: 100%; padding: 8px; margin-top: 4px; box-sizing: border-box; border: 1px solid var(--border); border-radius: 8px; }
+        button { margin-top: 18px; padding: 10px 16px; background: var(--accent); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; }
+        .erros-campo { color: var(--danger); font-size: 13px; }
+        a { color: var(--accent); }
+        .link-muted { color: var(--muted); font-size: 13px; }
+    </style>
+</head>
+<body>
+<div class="topbar"></div>
+<header>
+    <div class="brand">
+        <div class="logo">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="4" stroke="#4F46E5" stroke-width="2"/><path d="M8 12h8M8 8h8M8 16h5" stroke="#4F46E5" stroke-width="2" stroke-linecap="round"/></svg>
+        </div>
+        <h1>Sistema de Controle Financeiro</h1>
+    </div>
+    <div class="user">
+        <div class="avatar">{{ current_user.nome[0] | upper }}</div>
+        <div>
+            <div class="user-name">{{ current_user.nome }}</div>
+            <div class="user-sub">{{ current_user.papel }}</div>
+        </div>
+    </div>
+</header>
+<nav>
+    <a class="tab {{ 'active' if request.endpoint == 'auth.painel' else '' }}" href="{{ url_for('auth.painel') }}">Início</a>
+    <a class="tab {{ 'active' if request.endpoint in ['projetos.listar_projetos','projetos.novo_projeto','projetos.editar_projeto'] else '' }}" href="{{ url_for('projetos.listar_projetos') }}">Projetos</a>
+    {% if current_user.papel == "administrador" %}
+    <a class="tab {{ 'active' if request.endpoint in ['auth.listar_usuarios','auth.editar_usuario','auth.cadastro'] else '' }}" href="{{ url_for('auth.listar_usuarios') }}">Usuários</a>
+    {% endif %}
+</nav>
+<main>
+    {% with mensagens = get_flashed_messages(with_categories=true) %}
+        {% for categoria, mensagem in mensagens %}
+            <div class="flash {{ categoria }}">{{ mensagem }}</div>
+        {% endfor %}
+    {% endwith %}
+    {% block conteudo %}{% endblock %}
+</main>
+</body>
+</html>

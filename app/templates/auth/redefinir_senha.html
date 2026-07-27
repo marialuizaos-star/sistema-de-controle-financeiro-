@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block titulo %}Redefinir senha — SCF PROPEG{% endblock %}
+{% block conteudo %}
+<h2>Redefinir senha</h2>
+<form method="POST">
+    {{ form.hidden_tag() }}
+
+    <label>{{ form.senha.label }}</label>
+    {{ form.senha() }}
+    {% for erro in form.senha.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
+
+    <label>{{ form.confirmar_senha.label }}</label>
+    {{ form.confirmar_senha() }}
+    {% for erro in form.confirmar_senha.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
+
+    <button type="submit">Redefinir senha</button>
+</form>
+{% endblock %}

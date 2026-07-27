@@ -1,0 +1,34 @@
+{% extends "base_app.html" %}
+{% block titulo %}Cadastrar usuário — SCF PROPEG{% endblock %}
+{% block conteudo %}
+<div class="card">
+    <h2>Cadastrar usuário</h2>
+    <form method="POST">
+        {{ form.hidden_tag() }}
+
+        <label>{{ form.nome.label }}</label>
+        {{ form.nome() }}
+        {% for erro in form.nome.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
+
+        <label>{{ form.email.label }}</label>
+        {{ form.email() }}
+        {% for erro in form.email.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
+
+        <label>{{ form.telefone.label }}</label>
+        {{ form.telefone() }}
+
+        <label>{{ form.papel.label }}</label>
+        {{ form.papel() }}
+
+        <label>{{ form.senha.label }}</label>
+        {{ form.senha() }}
+        {% for erro in form.senha.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
+
+        <label>{{ form.confirmar_senha.label }}</label>
+        {{ form.confirmar_senha() }}
+        {% for erro in form.confirmar_senha.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
+
+        <button type="submit">Cadastrar</button>
+    </form>
+</div>
+{% endblock %}

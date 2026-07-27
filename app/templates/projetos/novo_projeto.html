@@ -1,0 +1,32 @@
+{% extends "base_app.html" %}
+{% block titulo %}Novo projeto — SCF PROPEG{% endblock %}
+{% block conteudo %}
+<div class="card">
+    <h2>Novo projeto</h2>
+    <form method="POST">
+        {{ form.hidden_tag() }}
+
+        <label>{{ form.nome.label }}</label>
+        {{ form.nome() }}
+        {% for erro in form.nome.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
+
+        <label>{{ form.valor_total.label }}</label>
+        {{ form.valor_total() }}
+        {% for erro in form.valor_total.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
+
+        <label>{{ form.vigencia_inicio.label }}</label>
+        {{ form.vigencia_inicio() }}
+        {% for erro in form.vigencia_inicio.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
+
+        <label>{{ form.vigencia_fim.label }}</label>
+        {{ form.vigencia_fim() }}
+        {% for erro in form.vigencia_fim.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
+
+        <label>{{ form.status.label }}</label>
+        {{ form.status() }}
+
+        <button type="submit">Cadastrar projeto</button>
+    </form>
+    <p style="margin-top:14px"><a href="{{ url_for('projetos.listar_projetos') }}">Voltar</a></p>
+</div>
+{% endblock %}
