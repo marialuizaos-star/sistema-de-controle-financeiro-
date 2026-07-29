@@ -3,7 +3,7 @@ from flask_login import login_user, logout_user, login_required, current_user
 from flask_mail import Message
 
 from app.extensions import db, mail
-from app.models import Usuario, Projeto
+from app.models import Usuario, Projeto, Alocacao
 from app.auth.forms import (
     LoginForm,
     CadastroUsuarioForm,
@@ -81,7 +81,17 @@ def cadastro():
 @auth_bp.route("/painel")
 @login_required
 def painel():
-    projetos = Projeto.query.order_by(Projeto.id.desc()).limit(5).all()
+    if current_user.papel == "administrador":
+        projetos = Projeto.query.order_by(Projeto.id.desc()).limit(5).all()
+    else:
+        projetos = (
+            Projeto.query.join(Alocacao)
+            .filter(Alocacao.usuario_id == current_user.id)
+            .distinct()
+            .order_by(Projeto.id.desc())
+            .limit(5)
+            .all()
+        )
     return render_template("auth/painel.html", projetos=projetos)
 
 
@@ -132,8 +142,9 @@ def _somente_administrador():
 def listar_usuarios():
     if not _somente_administrador():
         return redirect(url_for("auth.painel"))
-    usuarios = Usuario.query.order_by(Usuario.nome).all()
-    return render_template("auth/listar_usuarios.html", usuarios=usuarios)
+    administradores = Usuario.query.filter_by(papel="administrador").order_by(Usuario.nome).all()
+    externos = Usuario.query.filter_by(papel="usuario_externo").order_by(Usuario.nome).all()
+    return render_template("auth/listar_usuarios.html", administradores=administradores, externos=externos)
 
 
 @auth_bp.route("/usuarios/<int:usuario_id>/editar", methods=["GET", "POST"])
@@ -188,4 +199,40 @@ def alternar_status_usuario(usuario_id):
         f"Usuário {'reativado' if usuario.ativo else 'inativado'} com sucesso.",
         "sucesso",
     )
+    return redirect(url_for("auth.listar_usuarios"))
+
+
+@auth_bp.route("/usuarios/<int:usuario_id>/excluir", methods=["POST"])
+@login_required
+def excluir_usuario(usuario_id):
+    if not _somente_administrador():
+        return redirect(url_for("auth.painel"))
+
+    usuario = db.session.get(Usuario, usuario_id)
+    if usuario is None:
+        flash("Usuário não encontrado.", "erro")
+        return redirect(url_for("auth.listar_usuarios"))
+
+    if Alocacao.query.filter_by(usuario_id=usuario.id).first():
+        flash("Este usuário tem alocações vinculadas e não pode ser excluído. Inative-o em vez disso.", "erro")
+        return redirect(url_for("auth.editar_usuario", usuario_id=usuario.id))
+
+    if usuario.papel == "administrador":
+        outros_admins = Usuario.query.filter(
+            Usuario.papel == "administrador", Usuario.id != usuario.id, Usuario.ativo == True
+        ).count()
+        if outros_admins == 0:
+            flash("Não é possível excluir o único administrador ativo do sistema.", "erro")
+            return redirect(url_for("auth.editar_usuario", usuario_id=usuario.id))
+
+    excluindo_a_si_mesmo = usuario.id == current_user.id
+    db.session.delete(usuario)
+    db.session.commit()
+
+    if excluindo_a_si_mesmo:
+        logout_user()
+        flash("Sua conta foi excluída.", "sucesso")
+        return redirect(url_for("auth.login"))
+
+    flash("Usuário excluído com sucesso.", "sucesso")
     return redirect(url_for("auth.listar_usuarios"))

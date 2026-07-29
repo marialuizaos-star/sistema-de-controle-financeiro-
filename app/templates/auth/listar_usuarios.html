@@ -1,27 +1,46 @@
 {% extends "base_app.html" %}
 {% block titulo %}Usuários — SCF PROPEG{% endblock %}
 {% block conteudo %}
+
+{% macro tabela_usuarios(lista) %}
+<table>
+    <tr>
+        <th>Nome</th>
+        <th>E-mail</th>
+        <th>Status</th>
+        <th style="text-align:right">Ações</th>
+    </tr>
+    {% for usuario in lista %}
+    <tr>
+        <td>{{ usuario.nome }}</td>
+        <td>{{ usuario.email }}</td>
+        <td>{{ "Ativo" if usuario.ativo else "Inativo" }}</td>
+        <td style="text-align:right">
+            <a href="{{ url_for('auth.editar_usuario', usuario_id=usuario.id) }}">Editar</a>
+            {% if usuario.id != current_user.id %}
+            &nbsp;·&nbsp;
+            <form method="POST" action="{{ url_for('auth.excluir_usuario', usuario_id=usuario.id) }}" style="display:inline"
+                  onsubmit="return confirm('Tem certeza que deseja excluir {{ usuario.nome }}? Essa ação não pode ser desfeita.');">
+                <button type="submit" class="btn-link-perigo" style="margin-top:0;">Excluir</button>
+            </form>
+            {% endif %}
+        </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="4" class="link-muted">Nenhum usuário nesta categoria.</td></tr>
+    {% endfor %}
+</table>
+{% endmacro %}
+
 <div class="card">
-    <h2>Usuários cadastrados</h2>
-    <table>
-        <tr>
-            <th>Nome</th>
-            <th>E-mail</th>
-            <th>Perfil</th>
-            <th>Status</th>
-            <th style="text-align:right">Ações</th>
-        </tr>
-        {% for usuario in usuarios %}
-        <tr>
-            <td>{{ usuario.nome }}</td>
-            <td>{{ usuario.email }}</td>
-            <td>{{ usuario.papel }}</td>
-            <td>{{ "Ativo" if usuario.ativo else "Inativo" }}</td>
-            <td style="text-align:right"><a href="{{ url_for('auth.editar_usuario', usuario_id=usuario.id) }}">Editar</a></td>
-        </tr>
-        {% else %}
-        <tr><td colspan="5" class="link-muted">Nenhum usuário cadastrado ainda.</td></tr>
-        {% endfor %}
-    </table>
+    <h2>Administradores</h2>
+    <p><a href="{{ url_for('auth.cadastro') }}">+ Cadastrar usuário</a></p>
+    {{ tabela_usuarios(administradores) }}
 </div>
+
+<div class="card">
+    <h2>Usuários Externos</h2>
+    {{ tabela_usuarios(externos) }}
+</div>
+
 {% endblock %}

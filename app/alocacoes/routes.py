@@ -17,11 +17,16 @@ def _somente_administrador():
     return True
 
 
-def _preencher_opcoes(form):
-    form.usuario_id.choices = [
-        (u.id, u.nome)
-        for u in Usuario.query.filter_by(ativo=True).order_by(Usuario.nome).all()
-    ]
+def _preencher_opcoes(form, eh_admin):
+    if eh_admin:
+        form.usuario_id.choices = [
+            (u.id, u.nome)
+            for u in Usuario.query.filter_by(ativo=True).order_by(Usuario.nome).all()
+        ]
+    else:
+        form.usuario_id.choices = [(current_user.id, current_user.nome)]
+        form.usuario_id.data = current_user.id
+
     form.tipo_despesa_id.choices = [
         (t.id, t.nome)
         for t in TipoDespesa.query.filter_by(ativo=True).order_by(TipoDespesa.nome).all()
@@ -39,16 +44,14 @@ def _saldo_disponivel(projeto, alocacao_atual_id=None):
 @alocacoes_bp.route("/projetos/<int:projeto_id>/alocacoes/nova", methods=["GET", "POST"])
 @login_required
 def nova_alocacao(projeto_id):
-    if not _somente_administrador():
-        return redirect(url_for("projetos.detalhe_projeto", projeto_id=projeto_id))
-
     projeto = db.session.get(Projeto, projeto_id)
     if projeto is None:
         flash("Projeto não encontrado.", "erro")
         return redirect(url_for("projetos.listar_projetos"))
 
+    eh_admin = current_user.papel == "administrador"
     form = AlocacaoForm()
-    _preencher_opcoes(form)
+    _preencher_opcoes(form, eh_admin)
 
     if form.validate_on_submit():
         saldo = _saldo_disponivel(projeto)
@@ -57,7 +60,7 @@ def nova_alocacao(projeto_id):
                 f"Valor acima do saldo disponível do projeto (R$ {saldo:.2f} restantes).",
                 "erro",
             )
-            return render_template("alocacoes/nova_alocacao.html", form=form, projeto=projeto)
+            return render_template("alocacoes/nova_alocacao.html", form=form, projeto=projeto, eh_admin=eh_admin)
 
         alocacao = Alocacao(
             projeto_id=projeto.id,
@@ -71,7 +74,7 @@ def nova_alocacao(projeto_id):
         flash("Alocação cadastrada com sucesso.", "sucesso")
         return redirect(url_for("projetos.detalhe_projeto", projeto_id=projeto.id))
 
-    return render_template("alocacoes/nova_alocacao.html", form=form, projeto=projeto)
+    return render_template("alocacoes/nova_alocacao.html", form=form, projeto=projeto, eh_admin=eh_admin)
 
 
 @alocacoes_bp.route("/alocacoes/<int:alocacao_id>/editar", methods=["GET", "POST"])
@@ -87,7 +90,7 @@ def editar_alocacao(alocacao_id):
 
     projeto = alocacao.projeto
     form = AlocacaoForm(obj=alocacao)
-    _preencher_opcoes(form)
+    _preencher_opcoes(form, eh_admin=True)
 
     if form.validate_on_submit():
         saldo = _saldo_disponivel(projeto, alocacao_atual_id=alocacao.id)

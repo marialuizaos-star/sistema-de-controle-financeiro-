@@ -17,10 +17,25 @@ def _somente_administrador():
     return True
 
 
+def _pode_ver_projeto(projeto_id):
+    if current_user.papel == "administrador":
+        return True
+    return Alocacao.query.filter_by(projeto_id=projeto_id, usuario_id=current_user.id).first() is not None
+
+
 @projetos_bp.route("/projetos")
 @login_required
 def listar_projetos():
-    projetos = Projeto.query.order_by(Projeto.nome).all()
+    if current_user.papel == "administrador":
+        projetos = Projeto.query.order_by(Projeto.nome).all()
+    else:
+        projetos = (
+            Projeto.query.join(Alocacao)
+            .filter(Alocacao.usuario_id == current_user.id)
+            .distinct()
+            .order_by(Projeto.nome)
+            .all()
+        )
     return render_template("projetos/listar_projetos.html", projetos=projetos)
 
 
@@ -78,6 +93,10 @@ def detalhe_projeto(projeto_id):
     projeto = db.session.get(Projeto, projeto_id)
     if projeto is None:
         flash("Projeto não encontrado.", "erro")
+        return redirect(url_for("projetos.listar_projetos"))
+
+    if not _pode_ver_projeto(projeto_id):
+        flash("Você não tem acesso a este projeto.", "erro")
         return redirect(url_for("projetos.listar_projetos"))
 
     alocacoes = Alocacao.query.filter_by(projeto_id=projeto.id).all()

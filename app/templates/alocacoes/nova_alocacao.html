@@ -6,9 +6,14 @@
     <form method="POST">
         {{ form.hidden_tag() }}
 
+        {% if eh_admin %}
         <label>{{ form.usuario_id.label }}</label>
         {{ form.usuario_id() }}
         {% for erro in form.usuario_id.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
+        {% else %}
+        {{ form.usuario_id(style="display:none") }}
+        <p class="link-muted">Responsável: {{ current_user.nome }}</p>
+        {% endif %}
 
         <label>{{ form.tipo_despesa_id.label }}</label>
         {{ form.tipo_despesa_id() }}

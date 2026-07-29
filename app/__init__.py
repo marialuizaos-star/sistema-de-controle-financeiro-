@@ -31,6 +31,9 @@ def create_app(config_class=Config):
     from app.despesas.routes import despesas_bp
     app.register_blueprint(despesas_bp)
 
+    from app.relatorios.routes import relatorios_bp
+    app.register_blueprint(relatorios_bp)
+
     def formatar_moeda(valor):
         if valor is None:
             return "0,00"
