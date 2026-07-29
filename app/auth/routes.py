@@ -3,7 +3,7 @@ from flask_login import login_user, logout_user, login_required, current_user
 from flask_mail import Message
 
 from app.extensions import db, mail
-from app.models import Usuario
+from app.models import Usuario, Projeto
 from app.auth.forms import (
     LoginForm,
     CadastroUsuarioForm,
@@ -13,6 +13,13 @@ from app.auth.forms import (
 )
 
 auth_bp = Blueprint("auth", __name__, template_folder="../templates")
+
+
+@auth_bp.route("/")
+def index():
+    if current_user.is_authenticated:
+        return redirect(url_for("auth.painel"))
+    return redirect(url_for("auth.login"))
 
 
 @auth_bp.route("/login", methods=["GET", "POST"])
@@ -74,7 +81,8 @@ def cadastro():
 @auth_bp.route("/painel")
 @login_required
 def painel():
-    return render_template("auth/painel.html")
+    projetos = Projeto.query.order_by(Projeto.id.desc()).limit(5).all()
+    return render_template("auth/painel.html", projetos=projetos)
 
 
 @auth_bp.route("/recuperar-senha", methods=["GET", "POST"])
@@ -157,3 +165,27 @@ def editar_usuario(usuario_id):
         return redirect(url_for("auth.listar_usuarios"))
 
     return render_template("auth/editar_usuario.html", form=form, usuario=usuario)
+
+
+@auth_bp.route("/usuarios/<int:usuario_id>/alternar-status", methods=["POST"])
+@login_required
+def alternar_status_usuario(usuario_id):
+    if not _somente_administrador():
+        return redirect(url_for("auth.painel"))
+
+    usuario = db.session.get(Usuario, usuario_id)
+    if usuario is None:
+        flash("Usuário não encontrado.", "erro")
+        return redirect(url_for("auth.listar_usuarios"))
+
+    if usuario.id == current_user.id:
+        flash("Você não pode inativar o seu próprio usuário.", "erro")
+        return redirect(url_for("auth.listar_usuarios"))
+
+    usuario.ativo = not usuario.ativo
+    db.session.commit()
+    flash(
+        f"Usuário {'reativado' if usuario.ativo else 'inativado'} com sucesso.",
+        "sucesso",
+    )
+    return redirect(url_for("auth.listar_usuarios"))

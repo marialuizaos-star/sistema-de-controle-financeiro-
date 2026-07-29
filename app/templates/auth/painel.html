@@ -3,7 +3,7 @@
 {% block conteudo %}
 <div class="card">
     <h2>Bem-vindo(a), {{ current_user.nome }}</h2>
-    <p class="link-muted">Perfil: {{ current_user.papel }}</p>
+    <p class="link-muted">Perfil: {{ current_user.papel | rotulo }}</p>
 </div>
 
 <div class="card">
@@ -19,8 +19,8 @@
         <tr>
             <td>{{ projeto.nome }}</td>
             <td>R$ {{ projeto.valor_total | moeda }}</td>
-            <td>{{ projeto.status }}</td>
-            <td style="text-align:right"><a href="{{ url_for('projetos.editar_projeto', projeto_id=projeto.id) }}">Ver</a></td>
+            <td>{{ projeto.status | rotulo }}</td>
+            <td style="text-align:right"><a href="{{ url_for('projetos.detalhe_projeto', projeto_id=projeto.id) }}">Ver</a></td>
         </tr>
         {% else %}
         <tr><td colspan="4" class="link-muted">Nenhum projeto cadastrado ainda.</td></tr>

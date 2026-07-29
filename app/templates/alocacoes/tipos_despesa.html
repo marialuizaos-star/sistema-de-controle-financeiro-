@@ -1,0 +1,32 @@
+{% extends "base_app.html" %}
+{% block titulo %}Tipos de despesa — SCF PROPEG{% endblock %}
+{% block conteudo %}
+<div class="card">
+    <h2>Tipos de despesa</h2>
+    <p class="link-muted">Adicione ou gerencie os tipos de despesa disponíveis nas alocações (ex: Transporte, Diárias).</p>
+    <form method="POST" style="display:flex; gap:10px; align-items:flex-end;">
+        {{ form.hidden_tag() }}
+        <div style="flex:1;">
+            <label>{{ form.nome.label }}</label>
+            {{ form.nome(placeholder="Ex: Hospedagem") }}
+        </div>
+        <button type="submit" style="margin-top:4px;">+ Adicionar</button>
+    </form>
+    {% for erro in form.nome.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
+
+    <div style="margin-top:20px; display:flex; flex-wrap:wrap; gap:10px;">
+        {% for tipo in tipos %}
+        <form method="POST" action="{{ url_for('alocacoes.alternar_status_tipo_despesa', tipo_id=tipo.id) }}"
+              class="tag-tipo {{ '' if tipo.ativo else 'inativo' }}">
+            <span>{{ tipo.nome }}</span>
+            <button type="submit" title="{{ 'Inativar' if tipo.ativo else 'Reativar' }}"
+                    class="tag-acao {{ 'remover' if tipo.ativo else 'reativar' }}">
+                {{ "×" if tipo.ativo else "↺" }}
+            </button>
+        </form>
+        {% else %}
+        <p class="link-muted">Nenhum tipo de despesa cadastrado ainda.</p>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

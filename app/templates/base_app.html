@@ -12,6 +12,7 @@
             --card: #FFFFFF;
             --border: #E2E8F0;
             --accent: #4F46E5;
+            --botao: #4F46E5;
             --accent-soft: #EEF0FF;
             --danger: #DC2626;
             --danger-soft: #FEF2F2;
@@ -28,6 +29,12 @@
         .avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--navy); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; }
         .user-name { font-weight: 600; font-size: 14px; }
         .user-sub { font-size: 12px; color: var(--muted); }
+        .user-menu { position: relative; }
+        .user-menu summary { cursor: pointer; list-style: none; }
+        .user-menu summary::-webkit-details-marker { display: none; }
+        .user-dropdown { position: absolute; right: 0; top: 48px; background: #fff; border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 4px 14px rgba(0,0,0,.1); min-width: 150px; padding: 6px; z-index: 30; }
+        .user-dropdown a { display: block; padding: 8px 12px; border-radius: 6px; font-size: 14px; text-decoration: none; color: var(--danger); font-weight: 600; }
+        .user-dropdown a:hover { background: var(--danger-soft); }
         nav { background: #fff; border-bottom: 1px solid var(--border); display: flex; gap: 6px; padding: 10px 20px; }
         .tab { border: none; background: transparent; padding: 8px 14px; border-radius: 8px; font-size: 14px; font-weight: 600; color: var(--muted); text-decoration: none; }
         .tab.active { background: var(--accent-soft); color: var(--accent); }
@@ -43,7 +50,15 @@
         .flash.sucesso { background: #ECFDF5; color: var(--success); }
         label { display: block; margin-top: 12px; font-weight: 600; font-size: 13px; }
         input, select { width: 100%; padding: 8px; margin-top: 4px; box-sizing: border-box; border: 1px solid var(--border); border-radius: 8px; }
-        button { margin-top: 18px; padding: 10px 16px; background: var(--accent); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; }
+        button { margin-top: 18px; padding: 10px 22px; background: var(--botao); color: white; border: none; border-radius: 999px; cursor: pointer; font-weight: 600; }
+        button.perigo { background: var(--danger); border-radius: 999px; }
+        button.sucesso { background: var(--success); border-radius: 999px; }
+        .tag-tipo { display:inline-flex; align-items:center; gap:6px; padding:6px 8px 6px 14px; border-radius:999px; background: var(--accent-soft); color: var(--accent); font-size:13px; font-weight:600; }
+        .tag-tipo.inativo { background:#F1F5F9; color: var(--muted); text-decoration: line-through; }
+        .tag-acao { margin:0; padding:2px 8px; border-radius:999px; font-size:12px; }
+        .tag-acao.remover { background: var(--danger); }
+        .tag-acao.reativar { background: var(--success); }
+        .btn-link-perigo { background: none; color: var(--danger); border: none; padding: 0; margin: 0; font-weight: 600; font-size: 13px; text-decoration: underline; cursor: pointer; }
         .erros-campo { color: var(--danger); font-size: 13px; }
         a { color: var(--accent); }
         .link-muted { color: var(--muted); font-size: 13px; }
@@ -58,17 +73,22 @@
         </div>
         <h1>Sistema de Controle Financeiro</h1>
     </div>
-    <div class="user">
-        <div class="avatar">{{ current_user.nome[0] | upper }}</div>
-        <div>
-            <div class="user-name">{{ current_user.nome }}</div>
-            <div class="user-sub">{{ current_user.papel }}</div>
+    <details class="user-menu">
+        <summary class="user">
+            <div class="avatar">{{ current_user.nome[0] | upper }}</div>
+            <div>
+                <div class="user-name">{{ current_user.nome }}</div>
+                <div class="user-sub">{{ current_user.papel }}</div>
+            </div>
+        </summary>
+        <div class="user-dropdown">
+            <a href="{{ url_for('auth.logout') }}">Sair</a>
         </div>
-    </div>
+    </details>
 </header>
 <nav>
     <a class="tab {{ 'active' if request.endpoint == 'auth.painel' else '' }}" href="{{ url_for('auth.painel') }}">Início</a>
-    <a class="tab {{ 'active' if request.endpoint in ['projetos.listar_projetos','projetos.novo_projeto','projetos.editar_projeto'] else '' }}" href="{{ url_for('projetos.listar_projetos') }}">Projetos</a>
+    <a class="tab {{ 'active' if request.endpoint in ['projetos.listar_projetos','projetos.novo_projeto','projetos.editar_projeto','projetos.detalhe_projeto'] else '' }}" href="{{ url_for('projetos.listar_projetos') }}">Projetos</a>
     {% if current_user.papel == "administrador" %}
     <a class="tab {{ 'active' if request.endpoint in ['auth.listar_usuarios','auth.editar_usuario','auth.cadastro'] else '' }}" href="{{ url_for('auth.listar_usuarios') }}">Usuários</a>
     {% endif %}

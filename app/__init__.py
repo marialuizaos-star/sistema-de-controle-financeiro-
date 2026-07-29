@@ -25,6 +25,12 @@ def create_app(config_class=Config):
     from app.projetos.routes import projetos_bp
     app.register_blueprint(projetos_bp)
 
+    from app.alocacoes.routes import alocacoes_bp
+    app.register_blueprint(alocacoes_bp)
+
+    from app.despesas.routes import despesas_bp
+    app.register_blueprint(despesas_bp)
+
     def formatar_moeda(valor):
         if valor is None:
             return "0,00"
@@ -33,5 +39,22 @@ def create_app(config_class=Config):
         return texto
 
     app.jinja_env.filters["moeda"] = formatar_moeda
+
+    ROTULOS = {
+        "ativo": "Ativo",
+        "inativo": "Inativo",
+        "encerrado": "Encerrado",
+        "custeio": "Custeio",
+        "capital": "Capital",
+        "lancada": "Lançada",
+        "estornada": "Estornada",
+        "administrador": "Administrador",
+        "usuario_externo": "Usuário Externo",
+    }
+
+    def rotulo(valor):
+        return ROTULOS.get(valor, valor)
+
+    app.jinja_env.filters["rotulo"] = rotulo
 
     return app

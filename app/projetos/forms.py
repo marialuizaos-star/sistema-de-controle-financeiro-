@@ -3,9 +3,9 @@ from wtforms import StringField, DecimalField, DateField, SelectField
 from wtforms.validators import DataRequired, NumberRange, ValidationError
 
 STATUS_PROJETO = [
-    ("em_execucao", "Em execução"),
+    ("ativo", "Ativo"),
+    ("inativo", "Inativo"),
     ("encerrado", "Encerrado"),
-    ("cancelado", "Cancelado"),
 ]
 
 

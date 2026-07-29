@@ -24,4 +24,20 @@
     </form>
     <p style="margin-top:14px"><a href="{{ url_for('auth.listar_usuarios') }}">Voltar</a></p>
 </div>
+
+<div class="card">
+    <h2>Status da conta</h2>
+    <p class="link-muted">
+        Status atual: <strong>{{ "Ativo" if usuario.ativo else "Inativo" }}</strong>
+    </p>
+    {% if usuario.id != current_user.id %}
+    <form method="POST" action="{{ url_for('auth.alternar_status_usuario', usuario_id=usuario.id) }}">
+        <button type="submit" class="{{ 'perigo' if usuario.ativo else 'sucesso' }}">
+            {{ "Inativar usuário" if usuario.ativo else "Reativar usuário" }}
+        </button>
+    </form>
+    {% else %}
+    <p class="link-muted">Você não pode inativar o seu próprio usuário.</p>
+    {% endif %}
+</div>
 {% endblock %}

@@ -1,0 +1,81 @@
+{% extends "base_app.html" %}
+{% block titulo %}Despesas — SCF PROPEG{% endblock %}
+{% block conteudo %}
+<div class="card">
+    <h2>{{ alocacao.tipo_despesa.nome if alocacao.tipo_despesa else "Alocação" }}</h2>
+    <p class="link-muted">
+        Projeto: {{ alocacao.projeto.nome }} &nbsp;·&nbsp;
+        Responsável: {{ alocacao.usuario.nome }} &nbsp;·&nbsp;
+        Categoria: {{ alocacao.categoria | rotulo }}
+    </p>
+    <table>
+        <tr><td>Valor alocado</td><td style="text-align:right">R$ {{ alocacao.valor_alocado | moeda }}</td></tr>
+        <tr><td>Total gasto</td><td style="text-align:right">R$ {{ total_gasto | moeda }}</td></tr>
+        <tr><td><strong>Saldo</strong></td><td style="text-align:right"><strong>R$ {{ saldo | moeda }}</strong></td></tr>
+    </table>
+</div>
+
+<div class="card">
+    <h2>Adicionar comprovante</h2>
+    <form method="POST" enctype="multipart/form-data">
+        {{ form.hidden_tag() }}
+
+        <label>{{ form.data.label }}</label>
+        {{ form.data() }}
+        {% for erro in form.data.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
+
+        <label>{{ form.valor.label }}</label>
+        {{ form.valor() }}
+        {% for erro in form.valor.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
+
+        <label>{{ form.fornecedor.label }}</label>
+        {{ form.fornecedor() }}
+        {% for erro in form.fornecedor.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
+
+        <label>{{ form.descricao.label }}</label>
+        {{ form.descricao() }}
+        {% for erro in form.descricao.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
+
+        <label>{{ form.comprovante.label }}</label>
+        {{ form.comprovante() }}
+        {% for erro in form.comprovante.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
+
+        <button type="submit">Adicionar comprovante</button>
+    </form>
+</div>
+
+<div class="card">
+    <h2>Despesas lançadas</h2>
+    <table>
+        <tr>
+            <th>Data</th>
+            <th>Fornecedor</th>
+            <th>Valor</th>
+            <th>Status</th>
+            <th style="text-align:right">Ações</th>
+        </tr>
+        {% for despesa in despesas %}
+        <tr>
+            <td>{{ despesa.data.strftime('%d/%m/%Y') }}</td>
+            <td>{{ despesa.fornecedor }}</td>
+            <td>R$ {{ despesa.valor | moeda }}</td>
+            <td>{{ despesa.status | rotulo }}</td>
+            <td style="text-align:right">
+                <a href="{{ url_for('despesas.ver_comprovante', despesa_id=despesa.id) }}" target="_blank">+ Comprovante</a>
+                {% if current_user.papel == "administrador" and despesa.status == "lancada" %}
+                &nbsp;·&nbsp;
+                <form method="POST" action="{{ url_for('despesas.estornar_despesa', despesa_id=despesa.id) }}" style="display:inline"
+                      onsubmit="return confirm('Estornar esta despesa? O valor volta pro saldo da alocação.');">
+                    <button type="submit" class="btn-link-perigo" style="margin-top:0;">Estornar</button>
+                </form>
+                {% endif %}
+            </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5" class="link-muted">Nenhuma despesa lançada ainda.</td></tr>
+        {% endfor %}
+    </table>
+</div>
+
+<p><a href="{{ url_for('projetos.detalhe_projeto', projeto_id=alocacao.projeto_id) }}">Voltar para o projeto</a></p>
+{% endblock %}

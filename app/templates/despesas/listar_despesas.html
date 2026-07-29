@@ -1,0 +1,32 @@
+{% extends "base_app.html" %}
+{% block titulo %}Despesas — {{ projeto.nome }} — SCF PROPEG{% endblock %}
+{% block conteudo %}
+<div class="card">
+    <h2>Despesas lançadas — {{ projeto.nome }}</h2>
+    <table>
+        <tr>
+            <th>Data</th>
+            <th>Responsável</th>
+            <th>Alocação</th>
+            <th>Fornecedor</th>
+            <th>Valor</th>
+            <th>Status</th>
+            <th>Comprovante</th>
+        </tr>
+        {% for despesa in despesas %}
+        <tr>
+            <td>{{ despesa.data.strftime('%d/%m/%Y') }}</td>
+            <td>{{ despesa.alocacao.usuario.nome }}</td>
+            <td>{{ despesa.alocacao.tipo_despesa.nome if despesa.alocacao.tipo_despesa else "—" }} ({{ despesa.alocacao.categoria | rotulo }})</td>
+            <td>{{ despesa.fornecedor }}</td>
+            <td>R$ {{ despesa.valor | moeda }}</td>
+            <td>{{ despesa.status | rotulo }}</td>
+            <td><a href="{{ url_for('despesas.ver_comprovante', despesa_id=despesa.id) }}" target="_blank">+ Comprovante</a></td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7" class="link-muted">Nenhuma despesa lançada ainda.</td></tr>
+        {% endfor %}
+    </table>
+</div>
+<p><a href="{{ url_for('projetos.detalhe_projeto', projeto_id=projeto.id) }}">Voltar para o projeto</a></p>
+{% endblock %}

@@ -1,0 +1,132 @@
+{% extends "base_app.html" %}
+{% block titulo %}{{ projeto.nome }} — SCF PROPEG{% endblock %}
+{% block conteudo %}
+<div class="card">
+    <h2>{{ projeto.nome }}</h2>
+    <p class="link-muted">
+        Vigência: {{ projeto.vigencia_inicio.strftime('%d/%m/%Y') }} a {{ projeto.vigencia_fim.strftime('%d/%m/%Y') }}
+        &nbsp;·&nbsp; Status: {{ projeto.status | rotulo }}
+    </p>
+    {% if current_user.papel == "administrador" %}
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px;">
+        <a href="{{ url_for('projetos.editar_projeto', projeto_id=projeto.id) }}">Editar projeto</a>
+        {% if not alocacoes %}
+        <form method="POST" action="{{ url_for('projetos.excluir_projeto', projeto_id=projeto.id) }}"
+              onsubmit="return confirm('Tem certeza que deseja excluir este projeto? Essa ação não pode ser desfeita.');">
+            <button type="submit" class="btn-link-perigo" style="margin-top:0;">Excluir projeto</button>
+        </form>
+        {% else %}
+        <span class="link-muted">Já tem alocações — use "Encerrado" em vez de excluir</span>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+
+<div class="card">
+    <h2>Resumo financeiro</h2>
+    <div style="display:flex; gap:24px; flex-wrap:wrap; align-items:center;">
+        <div style="flex:1; min-width:220px;">
+            <table>
+                <tr><td>Valor total do projeto</td><td style="text-align:right">R$ {{ projeto.valor_total | moeda }}</td></tr>
+                <tr><td>Total já alocado</td><td style="text-align:right">R$ {{ total_alocado | moeda }}</td></tr>
+                <tr><td><strong>Saldo disponível</strong></td><td style="text-align:right"><strong>R$ {{ saldo_disponivel | moeda }}</strong></td></tr>
+            </table>
+        </div>
+        {% if grafico_labels %}
+        <div style="flex:1; min-width:260px; max-width:320px;">
+            <canvas id="graficoAlocacoes"></canvas>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card">
+    <h2>Alocações</h2>
+    {% if current_user.papel == "administrador" %}
+    <p>
+        <a href="{{ url_for('alocacoes.nova_alocacao', projeto_id=projeto.id) }}">+ Nova alocação</a>
+        &nbsp;·&nbsp;
+        <a href="{{ url_for('alocacoes.tipos_despesa') }}" class="link-muted">Gerenciar tipos de despesa</a>
+    </p>
+    {% endif %}
+    <table>
+        <tr>
+            <th>Usuário responsável</th>
+            <th>Tipo de despesa</th>
+            <th>Categoria</th>
+            <th>Valor alocado</th>
+            <th>Comprovante</th>
+            <th style="text-align:right">Ações</th>
+        </tr>
+        {% for alocacao in alocacoes %}
+        <tr>
+            <td>{{ alocacao.usuario.nome }}</td>
+            <td>{{ alocacao.tipo_despesa.nome if alocacao.tipo_despesa else "—" }}</td>
+            <td>{{ alocacao.categoria | rotulo }}</td>
+            <td>R$ {{ alocacao.valor_alocado | moeda }}</td>
+            <td><a href="{{ url_for('despesas.nova_despesa', alocacao_id=alocacao.id) }}">+ Adicionar</a></td>
+            <td style="text-align:right">
+                {% if current_user.papel == "administrador" %}
+                <a href="{{ url_for('alocacoes.editar_alocacao', alocacao_id=alocacao.id) }}">Editar</a>
+                {% endif %}
+            </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" class="link-muted">Nenhuma alocação cadastrada ainda.</td></tr>
+        {% endfor %}
+    </table>
+</div>
+
+<div class="card">
+    <h2>Despesas lançadas</h2>
+    <table>
+        <tr>
+            <th>Data</th>
+            <th>Responsável</th>
+            <th>Alocação</th>
+            <th>Fornecedor</th>
+            <th>Valor</th>
+            <th>Status</th>
+            <th>Comprovante</th>
+        </tr>
+        {% for despesa in despesas %}
+        <tr>
+            <td>{{ despesa.data.strftime('%d/%m/%Y') }}</td>
+            <td>{{ despesa.alocacao.usuario.nome }}</td>
+            <td>{{ despesa.alocacao.tipo_despesa.nome if despesa.alocacao.tipo_despesa else "—" }} ({{ despesa.alocacao.categoria | rotulo }})</td>
+            <td>{{ despesa.fornecedor }}</td>
+            <td>R$ {{ despesa.valor | moeda }}</td>
+            <td>{{ despesa.status | rotulo }}</td>
+            <td><a href="{{ url_for('despesas.ver_comprovante', despesa_id=despesa.id) }}" target="_blank">Ver comprovante</a></td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7" class="link-muted">Nenhuma despesa lançada ainda.</td></tr>
+        {% endfor %}
+    </table>
+</div>
+
+<p><a href="{{ url_for('projetos.listar_projetos') }}">Voltar para Projetos</a></p>
+
+{% if grafico_labels %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<script id="dados-grafico" type="application/json">{{ {"labels": grafico_labels, "valores": grafico_valores} | tojson }}</script>
+<script>
+    const dados = JSON.parse(document.getElementById('dados-grafico').textContent);
+    const ctx = document.getElementById('graficoAlocacoes');
+    new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: dados.labels,
+            datasets: [{
+                data: dados.valores,
+                backgroundColor: ['#AF1C75', '#4F46E5', '#16A34A', '#D97706', '#0EA5E9', '#DC2626', '#8B5CF6', '#059669'],
+                borderWidth: 0,
+            }]
+        },
+        options: {
+            plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } } }
+        }
+    });
+</script>
+{% endif %}
+{% endblock %}

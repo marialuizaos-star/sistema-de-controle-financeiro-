@@ -13,9 +13,11 @@
     {{ form.senha() }}
     {% for erro in form.senha.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
 
-    <label>{{ form.lembrar() }} {{ form.lembrar.label }}</label>
+    <div class="checkbox-row">
+        {{ form.lembrar() }} {{ form.lembrar.label }}
+    </div>
 
     <button type="submit">Entrar</button>
 </form>
-<p><a href="{{ url_for('auth.recuperar_senha') }}">Esqueci minha senha</a></p>
+<p class="auth-links"><a href="{{ url_for('auth.recuperar_senha') }}">Esqueci minha senha</a></p>
 {% endblock %}

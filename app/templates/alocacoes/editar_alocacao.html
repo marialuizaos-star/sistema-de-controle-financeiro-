@@ -1,0 +1,28 @@
+{% extends "base_app.html" %}
+{% block titulo %}Editar alocação — SCF PROPEG{% endblock %}
+{% block conteudo %}
+<div class="card">
+    <h2>Editar alocação — {{ projeto.nome }}</h2>
+    <form method="POST">
+        {{ form.hidden_tag() }}
+
+        <label>{{ form.usuario_id.label }}</label>
+        {{ form.usuario_id() }}
+        {% for erro in form.usuario_id.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
+
+        <label>{{ form.tipo_despesa_id.label }}</label>
+        {{ form.tipo_despesa_id() }}
+        {% for erro in form.tipo_despesa_id.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
+
+        <label>{{ form.categoria.label }}</label>
+        {{ form.categoria() }}
+
+        <label>{{ form.valor_alocado.label }}</label>
+        {{ form.valor_alocado() }}
+        {% for erro in form.valor_alocado.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
+
+        <button type="submit">Salvar alterações</button>
+    </form>
+    <p style="margin-top:14px"><a href="{{ url_for('projetos.detalhe_projeto', projeto_id=projeto.id) }}">Voltar</a></p>
+</div>
+{% endblock %}

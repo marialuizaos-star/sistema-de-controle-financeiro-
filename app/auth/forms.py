@@ -10,16 +10,22 @@ PERFIS = [
 ]
 
 
+def remover_espacos(valor):
+    if valor is not None and hasattr(valor, "strip"):
+        return valor.strip()
+    return valor
+
+
 class LoginForm(FlaskForm):
-    email = StringField("E-mail", validators=[DataRequired(), Email()])
+    email = StringField("E-mail", filters=[remover_espacos], validators=[DataRequired(), Email()])
     senha = PasswordField("Senha", validators=[DataRequired()])
     lembrar = BooleanField("Manter conectado")
 
 
 class CadastroUsuarioForm(FlaskForm):
-    nome = StringField("Nome", validators=[DataRequired(), Length(max=120)])
-    email = StringField("E-mail", validators=[DataRequired(), Email(), Length(max=150)])
-    telefone = StringField("Telefone", validators=[Length(max=20)])
+    nome = StringField("Nome", filters=[remover_espacos], validators=[DataRequired(), Length(max=120)])
+    email = StringField("E-mail", filters=[remover_espacos], validators=[DataRequired(), Email(), Length(max=150)])
+    telefone = StringField("Telefone", filters=[remover_espacos], validators=[Length(max=20)])
     papel = SelectField("Perfil de acesso", choices=PERFIS, validators=[DataRequired()])
     senha = PasswordField("Senha", validators=[DataRequired(), Length(min=8)])
     confirmar_senha = PasswordField(
@@ -32,7 +38,7 @@ class CadastroUsuarioForm(FlaskForm):
 
 
 class SolicitarRecuperacaoForm(FlaskForm):
-    email = StringField("E-mail", validators=[DataRequired(), Email()])
+    email = StringField("E-mail", filters=[remover_espacos], validators=[DataRequired(), Email()])
 
 
 class RedefinirSenhaForm(FlaskForm):
@@ -43,7 +49,7 @@ class RedefinirSenhaForm(FlaskForm):
 
 
 class EditarUsuarioForm(FlaskForm):
-    nome = StringField("Nome", validators=[DataRequired(), Length(max=120)])
-    email = StringField("E-mail", validators=[DataRequired(), Email(), Length(max=150)])
-    telefone = StringField("Telefone", validators=[Length(max=20)])
+    nome = StringField("Nome", filters=[remover_espacos], validators=[DataRequired(), Length(max=120)])
+    email = StringField("E-mail", filters=[remover_espacos], validators=[DataRequired(), Email(), Length(max=150)])
+    telefone = StringField("Telefone", filters=[remover_espacos], validators=[Length(max=20)])
     papel = SelectField("Perfil de acesso", choices=PERFIS, validators=[DataRequired()])

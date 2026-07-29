@@ -5,21 +5,6 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 from app.extensions import db
 
-# ---------------------------------------------------------------------------
-# NOTA IMPORTANTE (leia antes de mexer neste arquivo):
-#
-# Os campos abaixo seguem exatamente o Modelo de Dados da Figura 1 do
-# documento de requisitos, com UMA adição: Usuario.senha_hash.
-#
-# O diagrama não tinha campo de senha, mas o RF01 exige "acesso mediante
-# e-mail e senha" e o NRF03 exige que a senha seja armazenada com hash.
-#
-# Por causa do R3 / NRF04 (proibição de exclusão física de registros
-# financeiros), nenhum relacionamento aqui usa exclusão em cascata no
-# banco. "Remover" um Projeto, Alocação ou Despesa deve sempre significar
-# mudar o campo `status`, nunca fazer DELETE.
-# ---------------------------------------------------------------------------
-
 
 def agora_utc():
     return datetime.now(timezone.utc)
@@ -39,8 +24,6 @@ class Usuario(UserMixin, db.Model):
 
     alocacoes = db.relationship("Alocacao", back_populates="usuario")
 
-    # Perfis: Administrador (acesso total) e Usuário Externo (lança despesas,
-    # anexa comprovantes e consulta relatórios), conforme o diagrama de casos de uso.
     PAPEIS_VALIDOS = ("administrador", "usuario_externo")
 
     def set_senha(self, senha_texto_puro):
@@ -82,16 +65,16 @@ class Projeto(db.Model):
     valor_total = db.Column(db.Numeric(12, 2), nullable=False)
     vigencia_inicio = db.Column(db.Date, nullable=False)
     vigencia_fim = db.Column(db.Date, nullable=False)
-    status = db.Column(db.String(20), nullable=False, default="em_execucao")
+    status = db.Column(db.String(20), nullable=False, default="ativo")
 
     alocacoes = db.relationship("Alocacao", back_populates="projeto")
 
-    STATUS_VALIDOS = ("em_execucao", "encerrado", "cancelado")
+    STATUS_VALIDOS = ("ativo", "inativo", "encerrado")
 
     __table_args__ = (
         db.CheckConstraint("valor_total >= 0", name="ck_projeto_valor_total_positivo"),
         db.CheckConstraint(
-            "status IN ('em_execucao', 'encerrado', 'cancelado')",
+            "status IN ('ativo', 'inativo', 'encerrado')",
             name="ck_projeto_status_valido",
         ),
     )
@@ -100,17 +83,30 @@ class Projeto(db.Model):
         return f"<Projeto {self.id} {self.nome}>"
 
 
+class TipoDespesa(db.Model):
+    __tablename__ = "tipo_despesa"
+
+    id = db.Column(db.Integer, primary_key=True)
+    nome = db.Column(db.String(100), nullable=False, unique=True)
+    ativo = db.Column(db.Boolean, nullable=False, default=True)
+
+    def __repr__(self):
+        return f"<TipoDespesa {self.id} {self.nome}>"
+
+
 class Alocacao(db.Model):
     __tablename__ = "alocacao"
 
     id = db.Column(db.Integer, primary_key=True)
     projeto_id = db.Column(db.Integer, db.ForeignKey("projeto.id"), nullable=False)
     usuario_id = db.Column(db.Integer, db.ForeignKey("usuario.id"), nullable=False)
+    tipo_despesa_id = db.Column(db.Integer, db.ForeignKey("tipo_despesa.id"), nullable=True)
     categoria = db.Column(db.String(10), nullable=False)
     valor_alocado = db.Column(db.Numeric(12, 2), nullable=False)
 
     projeto = db.relationship("Projeto", back_populates="alocacoes")
     usuario = db.relationship("Usuario", back_populates="alocacoes")
+    tipo_despesa = db.relationship("TipoDespesa")
     despesas = db.relationship("Despesa", back_populates="alocacao")
 
     CATEGORIAS_VALIDAS = ("custeio", "capital")
