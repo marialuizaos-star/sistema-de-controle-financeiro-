@@ -1,6 +1,6 @@
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, BooleanField, SelectField
-from wtforms.validators import DataRequired, Email, Length, EqualTo
+from wtforms.validators import DataRequired, Email, Length, EqualTo, Optional
 
 from app.models import Usuario
 
@@ -23,9 +23,10 @@ class LoginForm(FlaskForm):
 
 
 class CadastroUsuarioForm(FlaskForm):
-    nome = StringField("Nome", filters=[remover_espacos], validators=[DataRequired(), Length(max=120)])
-    email = StringField("E-mail", filters=[remover_espacos], validators=[DataRequired(), Email(), Length(max=150)])
+    nome = StringField("Nome completo", filters=[remover_espacos], validators=[DataRequired(), Length(max=120)])
+    email = StringField("E-mail institucional", filters=[remover_espacos], validators=[DataRequired(), Email(), Length(max=150)])
     telefone = StringField("Telefone", filters=[remover_espacos], validators=[Length(max=20)])
+    departamento = StringField("Departamento / Centro", filters=[remover_espacos], validators=[Optional(), Length(max=150)])
     papel = SelectField("Perfil de acesso", choices=PERFIS, validators=[DataRequired()])
     senha = PasswordField("Senha", validators=[DataRequired(), Length(min=8)])
     confirmar_senha = PasswordField(
@@ -49,7 +50,8 @@ class RedefinirSenhaForm(FlaskForm):
 
 
 class EditarUsuarioForm(FlaskForm):
-    nome = StringField("Nome", filters=[remover_espacos], validators=[DataRequired(), Length(max=120)])
-    email = StringField("E-mail", filters=[remover_espacos], validators=[DataRequired(), Email(), Length(max=150)])
+    nome = StringField("Nome completo", filters=[remover_espacos], validators=[DataRequired(), Length(max=120)])
+    email = StringField("E-mail institucional", filters=[remover_espacos], validators=[DataRequired(), Email(), Length(max=150)])
     telefone = StringField("Telefone", filters=[remover_espacos], validators=[Length(max=20)])
+    departamento = StringField("Departamento / Centro", filters=[remover_espacos], validators=[Optional(), Length(max=150)])
     papel = SelectField("Perfil de acesso", choices=PERFIS, validators=[DataRequired()])

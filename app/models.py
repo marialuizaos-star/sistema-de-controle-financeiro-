@@ -20,6 +20,9 @@ class Usuario(UserMixin, db.Model):
     papel = db.Column(db.String(20), nullable=False, default="usuario_externo")
     ativo = db.Column(db.Boolean, nullable=False, default=True)
 
+    departamento = db.Column(db.String(150), nullable=True)
+    ultimo_acesso = db.Column(db.DateTime(timezone=True), nullable=True)
+
     senha_hash = db.Column(db.String(255), nullable=False)
 
     alocacoes = db.relationship("Alocacao", back_populates="usuario")
@@ -67,14 +70,18 @@ class Projeto(db.Model):
     vigencia_fim = db.Column(db.Date, nullable=False)
     status = db.Column(db.String(20), nullable=False, default="ativo")
 
-    alocacoes = db.relationship("Alocacao", back_populates="projeto")
+    criado_por_id = db.Column(db.Integer, db.ForeignKey("usuario.id"), nullable=True)
+    motivo_reprovacao = db.Column(db.Text, nullable=True)
 
-    STATUS_VALIDOS = ("ativo", "inativo", "encerrado")
+    alocacoes = db.relationship("Alocacao", back_populates="projeto")
+    criado_por = db.relationship("Usuario")
+
+    STATUS_VALIDOS = ("ativo", "inativo", "encerrado", "pendente_aprovacao", "reprovado")
 
     __table_args__ = (
         db.CheckConstraint("valor_total >= 0", name="ck_projeto_valor_total_positivo"),
         db.CheckConstraint(
-            "status IN ('ativo', 'inativo', 'encerrado')",
+            "status IN ('ativo', 'inativo', 'encerrado', 'pendente_aprovacao', 'reprovado')",
             name="ck_projeto_status_valido",
         ),
     )
@@ -83,15 +90,15 @@ class Projeto(db.Model):
         return f"<Projeto {self.id} {self.nome}>"
 
 
-class TipoDespesa(db.Model):
-    __tablename__ = "tipo_despesa"
+class TipoAlocacao(db.Model):
+    __tablename__ = "tipo_alocacao"
 
     id = db.Column(db.Integer, primary_key=True)
     nome = db.Column(db.String(100), nullable=False, unique=True)
     ativo = db.Column(db.Boolean, nullable=False, default=True)
 
     def __repr__(self):
-        return f"<TipoDespesa {self.id} {self.nome}>"
+        return f"<TipoAlocacao {self.id} {self.nome}>"
 
 
 class Alocacao(db.Model):
@@ -100,21 +107,29 @@ class Alocacao(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     projeto_id = db.Column(db.Integer, db.ForeignKey("projeto.id"), nullable=False)
     usuario_id = db.Column(db.Integer, db.ForeignKey("usuario.id"), nullable=False)
-    tipo_despesa_id = db.Column(db.Integer, db.ForeignKey("tipo_despesa.id"), nullable=True)
+    tipo_alocacao_id = db.Column(db.Integer, db.ForeignKey("tipo_alocacao.id"), nullable=True)
     categoria = db.Column(db.String(10), nullable=False)
     valor_alocado = db.Column(db.Numeric(12, 2), nullable=False)
 
+    papel_projeto = db.Column(db.String(20), nullable=True)
+
     projeto = db.relationship("Projeto", back_populates="alocacoes")
     usuario = db.relationship("Usuario", back_populates="alocacoes")
-    tipo_despesa = db.relationship("TipoDespesa")
+    tipo_alocacao = db.relationship("TipoAlocacao")
     despesas = db.relationship("Despesa", back_populates="alocacao")
 
     CATEGORIAS_VALIDAS = ("custeio", "capital")
+    PAPEIS_PROJETO_VALIDOS = ("coordenador", "pesquisador", "bolsista", "tecnico", "colaborador")
 
     __table_args__ = (
         db.CheckConstraint("valor_alocado >= 0", name="ck_alocacao_valor_positivo"),
         db.CheckConstraint(
             "categoria IN ('custeio', 'capital')", name="ck_alocacao_categoria_valida"
+        ),
+        db.CheckConstraint(
+            "papel_projeto IS NULL OR papel_projeto IN "
+            "('coordenador', 'pesquisador', 'bolsista', 'tecnico', 'colaborador')",
+            name="ck_alocacao_papel_projeto_valido",
         ),
     )
 
@@ -133,6 +148,11 @@ class Despesa(db.Model):
     descricao = db.Column(db.Text, nullable=True)
     status = db.Column(db.String(20), nullable=False, default="lancada")
 
+    natureza = db.Column(db.String(12), nullable=False, default="custeio")
+
+    cnpj_favorecido = db.Column(db.String(18), nullable=True)
+    numero_comprovante_fiscal = db.Column(db.String(50), nullable=True)
+
     criado_em = db.Column(db.DateTime(timezone=True), default=agora_utc, nullable=False)
 
     alocacao = db.relationship("Alocacao", back_populates="despesas")
@@ -141,11 +161,15 @@ class Despesa(db.Model):
     )
 
     STATUS_VALIDOS = ("lancada", "estornada")
+    NATUREZAS_VALIDAS = ("custeio", "capital", "devolucao")
 
     __table_args__ = (
         db.CheckConstraint("valor >= 0", name="ck_despesa_valor_positivo"),
         db.CheckConstraint(
             "status IN ('lancada', 'estornada')", name="ck_despesa_status_valido"
+        ),
+        db.CheckConstraint(
+            "natureza IN ('custeio', 'capital', 'devolucao')", name="ck_despesa_natureza_valida"
         ),
     )
 
@@ -167,3 +191,42 @@ class Comprovante(db.Model):
 
     def __repr__(self):
         return f"<Comprovante {self.id} despesa={self.despesa_id}>"
+
+
+class SolicitacaoRemanejamento(db.Model):
+    __tablename__ = "solicitacao_remanejamento"
+
+    id = db.Column(db.Integer, primary_key=True)
+    projeto_id = db.Column(db.Integer, db.ForeignKey("projeto.id"), nullable=False)
+    alocacao_origem_id = db.Column(db.Integer, db.ForeignKey("alocacao.id"), nullable=False)
+    alocacao_destino_id = db.Column(db.Integer, db.ForeignKey("alocacao.id"), nullable=False)
+    valor = db.Column(db.Numeric(12, 2), nullable=False)
+    status = db.Column(db.String(20), nullable=False, default="pendente")
+
+    justificativa = db.Column(db.Text, nullable=True)
+    motivo_reprovacao = db.Column(db.Text, nullable=True)
+
+    solicitado_por_id = db.Column(db.Integer, db.ForeignKey("usuario.id"), nullable=False)
+    criado_em = db.Column(db.DateTime(timezone=True), default=agora_utc, nullable=False)
+
+    projeto = db.relationship("Projeto")
+    alocacao_origem = db.relationship("Alocacao", foreign_keys=[alocacao_origem_id])
+    alocacao_destino = db.relationship("Alocacao", foreign_keys=[alocacao_destino_id])
+    solicitado_por = db.relationship("Usuario")
+
+    STATUS_VALIDOS = ("pendente", "aprovado", "reprovado")
+
+    __table_args__ = (
+        db.CheckConstraint("valor >= 0", name="ck_remanejamento_valor_positivo"),
+        db.CheckConstraint(
+            "status IN ('pendente', 'aprovado', 'reprovado')",
+            name="ck_remanejamento_status_valido",
+        ),
+        db.CheckConstraint(
+            "alocacao_origem_id != alocacao_destino_id",
+            name="ck_remanejamento_origem_destino_diferentes",
+        ),
+    )
+
+    def __repr__(self):
+        return f"<SolicitacaoRemanejamento {self.id} projeto={self.projeto_id}>"

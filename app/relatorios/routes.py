@@ -16,7 +16,8 @@ relatorios_bp = Blueprint("relatorios", __name__)
 
 ROTULOS = {
     "ativo": "Ativo", "inativo": "Inativo", "encerrado": "Encerrado",
-    "custeio": "Custeio", "capital": "Capital",
+    "pendente_aprovacao": "Pendente de aprovação", "reprovado": "Reprovado",
+    "custeio": "Custeio", "capital": "Capital", "devolucao": "Devolução",
     "lancada": "Lançada", "estornada": "Estornada",
 }
 
@@ -36,7 +37,7 @@ def relatorio_projeto(projeto_id):
 
     alocacoes = Alocacao.query.filter_by(projeto_id=projeto.id).all()
     total_alocado = sum((a.valor_alocado for a in alocacoes), 0)
-    saldo = projeto.valor_total - total_alocado
+    saldo_nao_alocado = projeto.valor_total - total_alocado
 
     despesas = (
         Despesa.query.join(Alocacao)
@@ -44,6 +45,9 @@ def relatorio_projeto(projeto_id):
         .order_by(Despesa.data)
         .all()
     )
+
+    total_despesas = sum((d.valor for d in despesas if d.status == "lancada"), 0)
+    saldo_disponivel = projeto.valor_total - total_despesas
 
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=A4, topMargin=2 * cm, bottomMargin=2 * cm)
@@ -73,8 +77,10 @@ def relatorio_projeto(projeto_id):
     elementos.append(Paragraph("Resumo financeiro", secao))
     resumo = [
         ["Valor total do projeto", _moeda(projeto.valor_total)],
-        ["Total alocado", _moeda(total_alocado)],
-        ["Saldo disponível", _moeda(saldo)],
+        ["Total alocado (planejado)", _moeda(total_alocado)],
+        ["Saldo não alocado", _moeda(saldo_nao_alocado)],
+        ["Total gasto (despesas lançadas)", _moeda(total_despesas)],
+        ["Saldo do projeto", _moeda(saldo_disponivel)],
     ]
     t = Table(resumo, colWidths=[8 * cm, 8 * cm])
     t.setStyle(TableStyle([
@@ -82,16 +88,17 @@ def relatorio_projeto(projeto_id):
         ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
         ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#E2E8F0")),
         ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#F8FAFC")),
+        ("FONTNAME", (0, -1), (-1, -1), "Helvetica-Bold"),
     ]))
     elementos.append(t)
 
     elementos.append(Paragraph("Alocações", secao))
     if alocacoes:
-        linhas = [["Responsável", "Tipo de despesa", "Categoria", "Valor alocado"]]
+        linhas = [["Responsável", "Tipo de alocação", "Categoria", "Valor alocado"]]
         for a in alocacoes:
             linhas.append([
                 a.usuario.nome,
-                a.tipo_despesa.nome if a.tipo_despesa else "—",
+                a.tipo_alocacao.nome if a.tipo_alocacao else "—",
                 ROTULOS.get(a.categoria, a.categoria),
                 _moeda(a.valor_alocado),
             ])
@@ -110,18 +117,22 @@ def relatorio_projeto(projeto_id):
 
     elementos.append(Paragraph("Despesas lançadas", secao))
     if despesas:
-        linhas = [["Data", "Responsável", "Fornecedor", "Valor", "Status"]]
+        linhas = [["Data", "Natureza", "Favorecido", "Nº comprovante fiscal", "Valor", "Status"]]
         for d in despesas:
+            favorecido = d.fornecedor
+            if d.cnpj_favorecido:
+                favorecido += f" ({d.cnpj_favorecido})"
             linhas.append([
                 d.data.strftime("%d/%m/%Y"),
-                d.alocacao.usuario.nome,
-                d.fornecedor,
+                ROTULOS.get(d.natureza, d.natureza),
+                favorecido,
+                d.numero_comprovante_fiscal or "—",
                 _moeda(d.valor),
                 ROTULOS.get(d.status, d.status),
             ])
-        t = Table(linhas, colWidths=[2.5 * cm, 4 * cm, 5 * cm, 3 * cm, 2.5 * cm])
+        t = Table(linhas, colWidths=[2 * cm, 2.3 * cm, 5 * cm, 2.7 * cm, 2.5 * cm, 2.5 * cm])
         t.setStyle(TableStyle([
-            ("FONTSIZE", (0, 0), (-1, -1), 8),
+            ("FONTSIZE", (0, 0), (-1, -1), 7.5),
             ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
             ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#E2E8F0")),
             ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#2B3A55")),

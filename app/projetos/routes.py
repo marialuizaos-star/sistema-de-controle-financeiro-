@@ -2,10 +2,11 @@ from decimal import Decimal
 
 from flask import Blueprint, render_template, redirect, url_for, flash
 from flask_login import login_required, current_user
+from sqlalchemy import extract
 
 from app.extensions import db
-from app.models import Projeto, Alocacao, Despesa
-from app.projetos.forms import ProjetoForm
+from app.models import Projeto, Alocacao, Despesa, TipoAlocacao
+from app.projetos.forms import ProjetoForm, SolicitarProjetoForm, ReprovarProjetoForm
 
 projetos_bp = Blueprint("projetos", __name__, template_folder="../templates/projetos")
 
@@ -20,7 +21,36 @@ def _somente_administrador():
 def _pode_ver_projeto(projeto_id):
     if current_user.papel == "administrador":
         return True
+
+    projeto = db.session.get(Projeto, projeto_id)
+    if projeto is not None and projeto.criado_por_id == current_user.id:
+        return True
+
     return Alocacao.query.filter_by(projeto_id=projeto_id, usuario_id=current_user.id).first() is not None
+
+
+def _opcoes_tipo_alocacao():
+    return [
+        (t.id, t.nome)
+        for t in TipoAlocacao.query.filter_by(ativo=True).order_by(TipoAlocacao.nome).all()
+    ]
+
+
+def _preencher_opcoes_itens_plano(form, opcoes_tipo_alocacao):
+    for item in form.itens_plano.entries:
+        item.form.tipo_alocacao_id.choices = opcoes_tipo_alocacao
+
+
+def _codigo_projeto(projeto):
+    """Código de identificação do projeto, no formato PRJ-{ano}-{número}."""
+    ano = projeto.vigencia_inicio.year
+    mesmo_ano = (
+        Projeto.query.filter(extract("year", Projeto.vigencia_inicio) == ano)
+        .order_by(Projeto.id)
+        .all()
+    )
+    numero = next((i + 1 for i, p in enumerate(mesmo_ano) if p.id == projeto.id), 1)
+    return f"PRJ-{ano}-{numero:03d}"
 
 
 @projetos_bp.route("/projetos")
@@ -29,14 +59,22 @@ def listar_projetos():
     if current_user.papel == "administrador":
         projetos = Projeto.query.order_by(Projeto.nome).all()
     else:
+        subquery_alocacoes = db.session.query(Alocacao.projeto_id).filter(
+            Alocacao.usuario_id == current_user.id
+        )
         projetos = (
-            Projeto.query.join(Alocacao)
-            .filter(Alocacao.usuario_id == current_user.id)
-            .distinct()
+            Projeto.query.filter(
+                db.or_(
+                    Projeto.id.in_(subquery_alocacoes),
+                    Projeto.criado_por_id == current_user.id,
+                )
+            )
             .order_by(Projeto.nome)
             .all()
         )
-    return render_template("projetos/listar_projetos.html", projetos=projetos)
+
+    codigos = {p.id: _codigo_projeto(p) for p in projetos}
+    return render_template("projetos/listar_projetos.html", projetos=projetos, codigos=codigos)
 
 
 @projetos_bp.route("/projetos/novo", methods=["GET", "POST"])
@@ -60,6 +98,112 @@ def novo_projeto():
         return redirect(url_for("projetos.listar_projetos"))
 
     return render_template("projetos/novo_projeto.html", form=form)
+
+
+@projetos_bp.route("/projetos/solicitar", methods=["GET", "POST"])
+@login_required
+def solicitar_projeto():
+    """Cadastro de projeto por usuário externo (novo RF): tela única onde os
+    dados do projeto e o plano de trabalho (itens de alocação) são enviados
+    juntos, numa só solicitação. O projeto nasce como 'pendente_aprovacao' e
+    só passa a 'ativo' quando o administrador aprova."""
+    if current_user.papel == "administrador":
+        flash("Administradores cadastram projetos diretamente, sem necessidade de aprovação.", "erro")
+        return redirect(url_for("projetos.novo_projeto"))
+
+    opcoes_tipo_alocacao = _opcoes_tipo_alocacao()
+
+    form = SolicitarProjetoForm()
+    _preencher_opcoes_itens_plano(form, opcoes_tipo_alocacao)
+
+    if form.validate_on_submit():
+        projeto = Projeto(
+            nome=form.nome.data,
+            valor_total=form.valor_total.data,
+            vigencia_inicio=form.vigencia_inicio.data,
+            vigencia_fim=form.vigencia_fim.data,
+            status="pendente_aprovacao",
+            criado_por_id=current_user.id,
+        )
+        db.session.add(projeto)
+        db.session.flush()  # gera projeto.id antes de criar as alocações
+
+        for item in form.itens_plano.entries:
+            alocacao = Alocacao(
+                projeto_id=projeto.id,
+                usuario_id=current_user.id,
+                tipo_alocacao_id=item.form.tipo_alocacao_id.data,
+                categoria=item.form.categoria.data,
+                valor_alocado=item.form.valor_alocado.data,
+                papel_projeto=item.form.papel_projeto.data,
+            )
+            db.session.add(alocacao)
+
+        db.session.commit()
+        flash("Projeto e plano de trabalho enviados para aprovação do administrador.", "sucesso")
+        return redirect(url_for("projetos.detalhe_projeto", projeto_id=projeto.id))
+
+    return render_template(
+        "projetos/solicitar_projeto.html", form=form, opcoes_tipo_alocacao=opcoes_tipo_alocacao
+    )
+
+
+@projetos_bp.route("/projetos/pendentes")
+@login_required
+def projetos_pendentes():
+    if not _somente_administrador():
+        return redirect(url_for("projetos.listar_projetos"))
+
+    projetos = Projeto.query.filter_by(status="pendente_aprovacao").order_by(Projeto.id).all()
+    return render_template("projetos/projetos_pendentes.html", projetos=projetos)
+
+
+@projetos_bp.route("/projetos/<int:projeto_id>/aprovar", methods=["POST"])
+@login_required
+def aprovar_projeto(projeto_id):
+    if not _somente_administrador():
+        return redirect(url_for("projetos.listar_projetos"))
+
+    projeto = db.session.get(Projeto, projeto_id)
+    if projeto is None:
+        flash("Projeto não encontrado.", "erro")
+        return redirect(url_for("projetos.projetos_pendentes"))
+
+    if projeto.status != "pendente_aprovacao":
+        flash("Este projeto não está aguardando aprovação.", "erro")
+        return redirect(url_for("projetos.detalhe_projeto", projeto_id=projeto.id))
+
+    projeto.status = "ativo"
+    projeto.motivo_reprovacao = None
+    db.session.commit()
+    flash("Projeto aprovado com sucesso.", "sucesso")
+    return redirect(url_for("projetos.detalhe_projeto", projeto_id=projeto.id))
+
+
+@projetos_bp.route("/projetos/<int:projeto_id>/reprovar", methods=["GET", "POST"])
+@login_required
+def reprovar_projeto(projeto_id):
+    if not _somente_administrador():
+        return redirect(url_for("projetos.listar_projetos"))
+
+    projeto = db.session.get(Projeto, projeto_id)
+    if projeto is None:
+        flash("Projeto não encontrado.", "erro")
+        return redirect(url_for("projetos.projetos_pendentes"))
+
+    if projeto.status != "pendente_aprovacao":
+        flash("Este projeto não está aguardando aprovação.", "erro")
+        return redirect(url_for("projetos.detalhe_projeto", projeto_id=projeto.id))
+
+    form = ReprovarProjetoForm()
+    if form.validate_on_submit():
+        projeto.status = "reprovado"
+        projeto.motivo_reprovacao = form.motivo_reprovacao.data
+        db.session.commit()
+        flash("Projeto reprovado.", "sucesso")
+        return redirect(url_for("projetos.projetos_pendentes"))
+
+    return render_template("projetos/reprovar_projeto.html", form=form, projeto=projeto)
 
 
 @projetos_bp.route("/projetos/<int:projeto_id>/editar", methods=["GET", "POST"])
@@ -100,12 +244,28 @@ def detalhe_projeto(projeto_id):
         return redirect(url_for("projetos.listar_projetos"))
 
     alocacoes = Alocacao.query.filter_by(projeto_id=projeto.id).all()
+
     total_alocado = sum((a.valor_alocado for a in alocacoes), Decimal("0"))
-    saldo_disponivel = projeto.valor_total - total_alocado
+    saldo_nao_alocado = projeto.valor_total - total_alocado
+
+    total_despesas = (
+        db.session.query(db.func.coalesce(db.func.sum(Despesa.valor), 0))
+        .join(Alocacao)
+        .filter(Alocacao.projeto_id == projeto.id, Despesa.status == "lancada")
+        .scalar()
+    )
+    total_despesas = Decimal(total_despesas)
+
+    saldo_disponivel = projeto.valor_total - total_despesas
+
+    if total_alocado > 0:
+        percentual_execucao = min(float((total_despesas / total_alocado) * 100), 100.0)
+    else:
+        percentual_execucao = 0.0
 
     grafico = {}
     for a in alocacoes:
-        nome_tipo = a.tipo_despesa.nome if a.tipo_despesa else "Sem tipo definido"
+        nome_tipo = a.tipo_alocacao.nome if a.tipo_alocacao else "Sem tipo definido"
         grafico[nome_tipo] = grafico.get(nome_tipo, Decimal("0")) + a.valor_alocado
 
     despesas_query = Despesa.query.join(Alocacao).filter(Alocacao.projeto_id == projeto.id).order_by(Despesa.data.desc())
@@ -116,9 +276,13 @@ def detalhe_projeto(projeto_id):
     return render_template(
         "projetos/detalhe_projeto.html",
         projeto=projeto,
+        codigo_projeto=_codigo_projeto(projeto),
         alocacoes=alocacoes,
         total_alocado=total_alocado,
+        saldo_nao_alocado=saldo_nao_alocado,
+        total_despesas=total_despesas,
         saldo_disponivel=saldo_disponivel,
+        percentual_execucao=percentual_execucao,
         grafico_labels=list(grafico.keys()),
         grafico_valores=[float(v) for v in grafico.values()],
         despesas=despesas,

@@ -34,6 +34,9 @@ def create_app(config_class=Config):
     from app.relatorios.routes import relatorios_bp
     app.register_blueprint(relatorios_bp)
 
+    from app.remanejamentos.routes import remanejamentos_bp
+    app.register_blueprint(remanejamentos_bp)
+
     def formatar_moeda(valor):
         if valor is None:
             return "0,00"
@@ -47,12 +50,22 @@ def create_app(config_class=Config):
         "ativo": "Ativo",
         "inativo": "Inativo",
         "encerrado": "Encerrado",
+        "pendente_aprovacao": "Pendente de aprovação",
+        "reprovado": "Reprovado",
         "custeio": "Custeio",
         "capital": "Capital",
+        "devolucao": "Devolução",
         "lancada": "Lançada",
         "estornada": "Estornada",
         "administrador": "Administrador",
         "usuario_externo": "Usuário Externo",
+        "pendente": "Pendente",
+        "aprovado": "Aprovado",
+        "coordenador": "Coordenador",
+        "pesquisador": "Pesquisador",
+        "bolsista": "Bolsista",
+        "tecnico": "Técnico",
+        "colaborador": "Colaborador",
     }
 
     def rotulo(valor):
