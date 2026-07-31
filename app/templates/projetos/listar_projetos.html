@@ -1,30 +1,89 @@
 {% extends "base_app.html" %}
 {% block titulo %}Projetos — SCF PROPEG{% endblock %}
 {% block conteudo %}
-<div class="card">
-    <h2>Projetos</h2>
+<style>
+    .escondido { display: none; }
+</style>
+
+<div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:20px; flex-wrap:wrap; gap:12px;">
+    <div>
+        <h1 style="font-size:22px; margin:0 0 4px 0;">Projetos de Pesquisa</h1>
+        <p class="link-muted" style="margin:0;">{{ projetos | length }} projeto{{ "s" if projetos|length != 1 else "" }} encontrado{{ "s" if projetos|length != 1 else "" }}</p>
+    </div>
     {% if current_user.papel == "administrador" %}
-    <p><a href="{{ url_for('projetos.novo_projeto') }}">+ Novo projeto</a></p>
+    <div style="display:flex; gap:10px; align-items:center;">
+        <a href="{{ url_for('projetos.novo_projeto') }}" class="btn-link-primario">+ Novo Projeto</a>
+        <div class="menu-dropdown">
+            <button type="button" class="menu-dropdown-btn" aria-label="Mais opções">☰</button>
+            <div class="menu-dropdown-lista">
+                <a href="{{ url_for('projetos.projetos_pendentes') }}">Pendentes de aprovação</a>
+                <a href="{{ url_for('remanejamentos.remanejamentos_pendentes') }}">Remanejamentos pendentes</a>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <a href="{{ url_for('projetos.solicitar_projeto') }}" class="btn-link-primario">+ Solicitar novo projeto</a>
     {% endif %}
-    <table>
+</div>
+
+<div class="card">
+    <input type="text" id="busca-projeto" placeholder="Buscar por título, código ou coordenador..." oninput="filtrarProjetos()">
+    <div class="pill-tabs" id="filtros-status">
+        <button type="button" class="pill-tab active" data-status="todos" onclick="filtrarPorStatus('todos')">Todos</button>
+        <button type="button" class="pill-tab" data-status="ativo" onclick="filtrarPorStatus('ativo')">Ativo</button>
+        <button type="button" class="pill-tab" data-status="encerrado" onclick="filtrarPorStatus('encerrado')">Encerrado</button>
+        <button type="button" class="pill-tab" data-status="pendente_aprovacao" onclick="filtrarPorStatus('pendente_aprovacao')">Pendente</button>
+        <button type="button" class="pill-tab" data-status="reprovado" onclick="filtrarPorStatus('reprovado')">Reprovado</button>
+    </div>
+</div>
+
+<div class="card" style="padding:0;">
+    <table id="tabela-projetos">
         <tr>
-            <th>Nome</th>
-            <th>Valor total</th>
+            <th>Código</th>
+            <th>Título</th>
+            <th>Coordenador</th>
             <th>Vigência</th>
+            <th>Valor total</th>
             <th>Status</th>
             <th style="text-align:right">Ações</th>
         </tr>
         {% for projeto in projetos %}
-        <tr>
+        {% set cor = {"ativo": "verde", "pendente_aprovacao": "laranja", "reprovado": "vermelho", "inativo": "cinza", "encerrado": "cinza"}.get(projeto.status, "cinza") %}
+        <tr class="linha-projeto linha-clicavel" data-href="{{ url_for('projetos.detalhe_projeto', projeto_id=projeto.id) }}"
+            data-status="{{ projeto.status }}" data-busca="{{ (codigos[projeto.id] ~ ' ' ~ projeto.nome ~ ' ' ~ (projeto.criado_por.nome if projeto.criado_por else '')) | lower }}">
+            <td class="mono">{{ codigos[projeto.id] }}</td>
             <td>{{ projeto.nome }}</td>
-            <td>R$ {{ projeto.valor_total | moeda }}</td>
-            <td>{{ projeto.vigencia_inicio.strftime('%d/%m/%Y') }} a {{ projeto.vigencia_fim.strftime('%d/%m/%Y') }}</td>
-            <td>{{ projeto.status | rotulo }}</td>
-            <td style="text-align:right"><a href="{{ url_for('projetos.detalhe_projeto', projeto_id=projeto.id) }}">Ver</a></td>
+            <td>{{ projeto.criado_por.nome if projeto.criado_por else "—" }}</td>
+            <td class="mono">{{ projeto.vigencia_inicio.strftime('%d/%m/%Y') }} → {{ projeto.vigencia_fim.strftime('%d/%m/%Y') }}</td>
+            <td class="mono">R$ {{ projeto.valor_total | moeda }}</td>
+            <td><span class="badge badge-{{ cor }}"><span class="badge-dot"></span>{{ projeto.status | rotulo }}</span></td>
+            <td style="text-align:right"><a href="{{ url_for('projetos.detalhe_projeto', projeto_id=projeto.id) }}" class="btn-sm impede-clique-linha">Ver</a></td>
         </tr>
         {% else %}
-        <tr><td colspan="5" class="link-muted">Nenhum projeto cadastrado ainda.</td></tr>
+        <tr><td colspan="7" class="link-muted" style="padding:16px;">Nenhum projeto cadastrado ainda.</td></tr>
         {% endfor %}
     </table>
 </div>
+
+<script>
+    var statusAtivo = 'todos';
+
+    function filtrarPorStatus(status) {
+        statusAtivo = status;
+        document.querySelectorAll('#filtros-status .pill-tab').forEach(function (botao) {
+            botao.classList.toggle('active', botao.getAttribute('data-status') === status);
+        });
+        filtrarProjetos();
+    }
+
+    function filtrarProjetos() {
+        var termo = document.getElementById('busca-projeto').value.toLowerCase().trim();
+        document.querySelectorAll('.linha-projeto').forEach(function (linha) {
+            var bateStatus = statusAtivo === 'todos' || linha.getAttribute('data-status') === statusAtivo;
+            var bateBusca = termo === '' || linha.getAttribute('data-busca').indexOf(termo) !== -1;
+            linha.classList.toggle('escondido', !(bateStatus && bateBusca));
+        });
+    }
+</script>
 {% endblock %}

@@ -1,46 +1,159 @@
 {% extends "base_app.html" %}
 {% block titulo %}Usuários — SCF PROPEG{% endblock %}
 {% block conteudo %}
+<style>
+    .escondido { display: none; }
+</style>
+
+<div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:20px; flex-wrap:wrap; gap:12px;">
+    <div>
+        <h1 style="font-size:22px; margin:0 0 4px 0;">Gerenciamento de Usuários</h1>
+        <p class="link-muted" style="margin:0;">{{ total_ativos }} usuários ativos no sistema</p>
+    </div>
+    <button type="button" id="btn-toggle-cadastro" onclick="alternarCadastro()">{{ '× Cancelar' if abrir_cadastro else '+ Novo Usuário' }}</button>
+</div>
+
+<div class="card {{ '' if abrir_cadastro else 'escondido' }}" id="painel-cadastro">
+    <h2>Cadastrar Novo Usuário</h2>
+    <form method="POST" action="{{ url_for('auth.cadastro') }}">
+        {{ form_cadastro.hidden_tag() }}
+
+        <div style="display:flex; gap:16px; flex-wrap:wrap;">
+            <div style="flex:1; min-width:220px;">
+                <label>{{ form_cadastro.nome.label }}</label>
+                {{ form_cadastro.nome(placeholder="Ex.: Prof. Dr. João da Silva") }}
+                {% for erro in form_cadastro.nome.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
+            </div>
+            <div style="flex:1; min-width:220px;">
+                <label>{{ form_cadastro.email.label }}</label>
+                {{ form_cadastro.email(placeholder="usuario@ufac.br") }}
+                {% for erro in form_cadastro.email.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
+            </div>
+        </div>
+
+        <div style="display:flex; gap:16px; flex-wrap:wrap;">
+            <div style="flex:1; min-width:220px;">
+                <label>{{ form_cadastro.departamento.label }}</label>
+                {{ form_cadastro.departamento(placeholder="Ex.: Centro de Ciências Biológicas") }}
+            </div>
+            <div style="flex:1; min-width:220px;">
+                <label>{{ form_cadastro.papel.label }}</label>
+                {{ form_cadastro.papel() }}
+            </div>
+        </div>
+
+        <div style="display:flex; gap:16px; flex-wrap:wrap;">
+            <div style="flex:1; min-width:220px;">
+                <label>{{ form_cadastro.telefone.label }}</label>
+                {{ form_cadastro.telefone(placeholder="(68) 90000-0000") }}
+            </div>
+        </div>
+
+        <div style="display:flex; gap:16px; flex-wrap:wrap;">
+            <div style="flex:1; min-width:220px;">
+                <label>{{ form_cadastro.senha.label }}</label>
+                {{ form_cadastro.senha() }}
+                {% for erro in form_cadastro.senha.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
+            </div>
+            <div style="flex:1; min-width:220px;">
+                <label>{{ form_cadastro.confirmar_senha.label }}</label>
+                {{ form_cadastro.confirmar_senha() }}
+                {% for erro in form_cadastro.confirmar_senha.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
+            </div>
+        </div>
+
+        <div style="display:flex; gap:10px; align-items:center;">
+            <button type="submit">Salvar Usuário</button>
+            <button type="button" onclick="alternarCadastro()" style="margin-top:18px; background:#fff; color:var(--ink); border:1px solid var(--border);">Cancelar</button>
+        </div>
+    </form>
+</div>
+
+<div class="pill-tabs" id="abas-usuario">
+    <button type="button" class="pill-tab active" id="tab-externos" onclick="mostrarAba('externos')">Usuários Externos (Pesquisadores) ({{ externos | length }})</button>
+    <button type="button" class="pill-tab" id="tab-administradores" onclick="mostrarAba('administradores')">Administradores ({{ administradores | length }})</button>
+</div>
 
 {% macro tabela_usuarios(lista) %}
 <table>
     <tr>
-        <th>Nome</th>
+        <th>Usuário</th>
         <th>E-mail</th>
+        <th>Departamento</th>
+        <th>Projetos</th>
+        <th>Último acesso</th>
         <th>Status</th>
         <th style="text-align:right">Ações</th>
     </tr>
     {% for usuario in lista %}
-    <tr>
-        <td>{{ usuario.nome }}</td>
+    {% set partes = usuario.nome.split() %}
+    {% set iniciais = (partes[0][0] + (partes[-1][0] if partes|length > 1 else '')) | upper %}
+    <tr class="linha-clicavel" data-href="{{ url_for('auth.editar_usuario', usuario_id=usuario.id) }}">
+        <td>
+            <div style="display:flex; align-items:center; gap:10px;">
+                <div class="app-avatar" style="width:32px; height:32px; font-size:12px;">{{ iniciais }}</div>
+                <div>
+                    <div style="font-weight:600;">{{ usuario.nome }}</div>
+                    <div class="link-muted" style="font-size:11px;">USR-{{ "%03d"|format(usuario.id) }}</div>
+                </div>
+            </div>
+        </td>
         <td>{{ usuario.email }}</td>
-        <td>{{ "Ativo" if usuario.ativo else "Inativo" }}</td>
-        <td style="text-align:right">
-            <a href="{{ url_for('auth.editar_usuario', usuario_id=usuario.id) }}">Editar</a>
-            {% if usuario.id != current_user.id %}
-            &nbsp;·&nbsp;
-            <form method="POST" action="{{ url_for('auth.excluir_usuario', usuario_id=usuario.id) }}" style="display:inline"
-                  onsubmit="return confirm('Tem certeza que deseja excluir {{ usuario.nome }}? Essa ação não pode ser desfeita.');">
-                <button type="submit" class="btn-link-perigo" style="margin-top:0;">Excluir</button>
-            </form>
+        <td>{{ usuario.departamento or "—" }}</td>
+        <td>{{ contagem_projetos.get(usuario.id, 0) }}</td>
+        <td>{{ usuario.ultimo_acesso.strftime('%d/%m/%Y') if usuario.ultimo_acesso else "—" }}</td>
+        <td>
+            {% if usuario.ativo %}
+            <span class="badge badge-verde"><span class="badge-dot"></span>Ativo</span>
+            {% else %}
+            <span class="badge badge-cinza"><span class="badge-dot"></span>Inativo</span>
             {% endif %}
+        </td>
+        <td style="text-align:right" class="impede-clique-linha">
+            <div class="menu-dropdown">
+                <button type="button" class="menu-dropdown-btn" aria-label="Mais opções">☰</button>
+                <div class="menu-dropdown-lista">
+                    <a href="{{ url_for('auth.editar_usuario', usuario_id=usuario.id) }}">Editar</a>
+                    {% if usuario.id != current_user.id %}
+                    <form method="POST" action="{{ url_for('auth.alternar_status_usuario', usuario_id=usuario.id) }}">
+                        <button type="submit">{{ "Desativar" if usuario.ativo else "Reativar" }}</button>
+                    </form>
+                    <form method="POST" action="{{ url_for('auth.excluir_usuario', usuario_id=usuario.id) }}"
+                          onsubmit="return confirm('Tem certeza que deseja excluir {{ usuario.nome }}? Essa ação não pode ser desfeita.');">
+                        <button type="submit" class="perigo">Excluir</button>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
         </td>
     </tr>
     {% else %}
-    <tr><td colspan="4" class="link-muted">Nenhum usuário nesta categoria.</td></tr>
+    <tr><td colspan="7" class="link-muted">Nenhum usuário nesta categoria.</td></tr>
     {% endfor %}
 </table>
 {% endmacro %}
 
-<div class="card">
-    <h2>Administradores</h2>
-    <p><a href="{{ url_for('auth.cadastro') }}">+ Cadastrar usuário</a></p>
+<div class="card" id="painel-externos">
+    {{ tabela_usuarios(externos) }}
+</div>
+<div class="card escondido" id="painel-administradores">
     {{ tabela_usuarios(administradores) }}
 </div>
 
-<div class="card">
-    <h2>Usuários Externos</h2>
-    {{ tabela_usuarios(externos) }}
-</div>
+<script>
+    function alternarCadastro() {
+        var painel = document.getElementById('painel-cadastro');
+        var botao = document.getElementById('btn-toggle-cadastro');
+        var estaEscondido = painel.classList.contains('escondido');
+        painel.classList.toggle('escondido', !estaEscondido);
+        botao.textContent = estaEscondido ? '× Cancelar' : '+ Novo Usuário';
+    }
 
+    function mostrarAba(aba) {
+        document.getElementById('painel-externos').classList.toggle('escondido', aba !== 'externos');
+        document.getElementById('painel-administradores').classList.toggle('escondido', aba !== 'administradores');
+        document.getElementById('tab-externos').classList.toggle('active', aba === 'externos');
+        document.getElementById('tab-administradores').classList.toggle('active', aba === 'administradores');
+    }
+</script>
 {% endblock %}

@@ -1,9 +1,11 @@
 {% extends "base_app.html" %}
-{% block titulo %}Tipos de despesa — SCF PROPEG{% endblock %}
+{% block titulo %}Tipos de alocação — SCF PROPEG{% endblock %}
 {% block conteudo %}
+<a href="{{ url_for('projetos.listar_projetos') }}" class="btn-link-secundario" style="margin-bottom:14px; display:inline-block; padding:6px 14px; font-size:12px;">← Projetos</a>
+
 <div class="card">
-    <h2>Tipos de despesa</h2>
-    <p class="link-muted">Adicione ou gerencie os tipos de despesa disponíveis nas alocações (ex: Transporte, Diárias).</p>
+    <h2>Tipos de alocação</h2>
+    <p class="link-muted">Adicione ou gerencie os tipos de alocação disponíveis (ex: Transporte, Diárias).</p>
     <form method="POST" style="display:flex; gap:10px; align-items:flex-end;">
         {{ form.hidden_tag() }}
         <div style="flex:1;">
@@ -16,7 +18,7 @@
 
     <div style="margin-top:20px; display:flex; flex-wrap:wrap; gap:10px;">
         {% for tipo in tipos %}
-        <form method="POST" action="{{ url_for('alocacoes.alternar_status_tipo_despesa', tipo_id=tipo.id) }}"
+        <form method="POST" action="{{ url_for('alocacoes.alternar_status_tipo_alocacao', tipo_id=tipo.id) }}"
               class="tag-tipo {{ '' if tipo.ativo else 'inativo' }}">
             <span>{{ tipo.nome }}</span>
             <button type="submit" title="{{ 'Inativar' if tipo.ativo else 'Reativar' }}"
@@ -25,7 +27,7 @@
             </button>
         </form>
         {% else %}
-        <p class="link-muted">Nenhum tipo de despesa cadastrado ainda.</p>
+        <p class="link-muted">Nenhum tipo de alocação cadastrado ainda.</p>
         {% endfor %}
     </div>
 </div>

@@ -1,0 +1,74 @@
+{% extends "base_app.html" %}
+{% block titulo %}Remanejar verba — {{ projeto.nome }} — SCF PROPEG{% endblock %}
+{% block conteudo %}
+<a href="{{ url_for('projetos.detalhe_projeto', projeto_id=projeto.id) }}" class="btn-link-secundario" style="margin-bottom:14px; display:inline-block; padding:6px 14px; font-size:12px;">← {{ projeto.nome }}</a>
+
+<h1 style="font-size:22px; margin:0 0 4px 0;">Remanejar Verba</h1>
+<p class="link-muted" style="margin:0 0 20px 0;">{{ projeto.nome }}</p>
+
+<div class="card">
+    <h2>Saldo por alocação</h2>
+    <p class="link-muted">Só é possível remanejar o que ainda não foi gasto (valor alocado menos despesas já lançadas).</p>
+    <table>
+        <tr>
+            {% if current_user.papel == "administrador" %}<th>Responsável</th>{% endif %}
+            <th>Tipo de alocação</th>
+            <th>Categoria</th>
+            <th>Valor alocado</th>
+            <th>Saldo remanejável</th>
+        </tr>
+        {% for alocacao in alocacoes_disponiveis %}
+        <tr>
+            {% if current_user.papel == "administrador" %}<td>{{ alocacao.usuario.nome }}</td>{% endif %}
+            <td>{{ alocacao.tipo_alocacao.nome if alocacao.tipo_alocacao else "—" }}</td>
+            <td>{{ alocacao.categoria | rotulo }}</td>
+            <td class="mono">R$ {{ alocacao.valor_alocado | moeda }}</td>
+            <td class="mono">R$ {{ saldos[alocacao.id] | moeda }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+</div>
+
+<div class="card">
+    <h2>Nova solicitação</h2>
+    <p class="link-muted">
+        {% if current_user.papel == "administrador" %}
+        Mova valores entre alocações do mesmo projeto. A execução é imediata.
+        {% else %}
+        Solicite a movimentação de valores entre suas alocações neste projeto. O pedido será enviado
+        para aprovação do administrador.
+        {% endif %}
+    </p>
+    <form method="POST">
+        {{ form.hidden_tag() }}
+
+        <div style="display:flex; gap:16px; flex-wrap:wrap;">
+            <div style="flex:1; min-width:220px;">
+                <label>{{ form.alocacao_origem_id.label }}</label>
+                {{ form.alocacao_origem_id() }}
+                {% for erro in form.alocacao_origem_id.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
+            </div>
+            <div style="flex:1; min-width:220px;">
+                <label>{{ form.alocacao_destino_id.label }}</label>
+                {{ form.alocacao_destino_id() }}
+                {% for erro in form.alocacao_destino_id.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
+            </div>
+        </div>
+
+        <label>{{ form.valor.label }}</label>
+        {{ form.valor() }}
+        {% for erro in form.valor.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
+
+        <label>{{ form.justificativa.label }}</label>
+        {{ form.justificativa(rows=3) }}
+        {% for erro in form.justificativa.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
+
+        <div style="display:flex; gap:10px; align-items:center;">
+            <button type="submit">
+                {{ "Executar remanejamento" if current_user.papel == "administrador" else "Enviar para aprovação" }}
+            </button>
+            <a href="{{ url_for('projetos.detalhe_projeto', projeto_id=projeto.id) }}" class="btn-link-secundario" style="margin-top:18px;">Cancelar</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

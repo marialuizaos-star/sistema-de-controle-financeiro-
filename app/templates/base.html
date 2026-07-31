@@ -34,10 +34,18 @@
             box-shadow: 0 20px 45px rgba(43,58,85,0.12);
             padding: 36px 32px 32px;
         }
-        .auth-brand { display:flex; align-items:center; gap:10px; justify-content:center; margin-bottom: 22px; }
-        .auth-brand .logo { width: 38px; height: 38px; border-radius: 10px; background: var(--accent-soft); display:flex; align-items:center; justify-content:center; }
-        .auth-brand span { font-weight: 700; font-size: 15px; color: var(--navy); }
-        h2 { text-align:center; font-size: 20px; margin: 0 0 22px 0; color: var(--navy); }
+        .auth-brand { display:flex; align-items:center; gap:10px; justify-content:center; margin-bottom: 4px; }
+        .auth-brand .logo {
+            width: 42px; height: 42px; border-radius: 10px;
+            background: #fff; border: 1px solid var(--border);
+            display:flex; align-items:center; justify-content:center;
+            overflow: hidden; padding: 3px; flex-shrink: 0;
+        }
+        .auth-brand .logo img { width: 100%; height: 100%; object-fit: contain; }
+        .auth-brand-text { line-height: 1.2; }
+        .auth-brand span { font-weight: 700; font-size: 15px; color: var(--navy); display: block; }
+        .auth-brand small { font-size: 11px; color: var(--muted); display: block; }
+        h2 { text-align:center; font-size: 20px; margin: 22px 0 22px 0; color: var(--navy); }
         .flash { padding: 10px 14px; border-radius: 10px; margin-bottom: 14px; font-size: 13px; }
         .flash.erro { background: var(--danger-soft); color: var(--danger); }
         .flash.sucesso { background: #ECFDF5; color: var(--success); }
@@ -50,15 +58,31 @@
         .auth-links a { color: var(--accent); text-decoration: none; font-weight: 600; }
         .checkbox-row { display:flex; align-items:center; gap:8px; margin-top:14px; font-size:13px; }
         .checkbox-row input { width:auto; margin-top:0; }
+
+        .btn-link-secundario {
+            display: inline-block; text-decoration: none; padding: 9px 18px; border-radius: 999px;
+            background: #fff; color: var(--ink); border: 1px solid var(--border);
+            font-size: 13px; font-weight: 600; cursor: pointer;
+        }
+        .btn-link-secundario:hover { background: #F1F5F9; }
+        .btn-link-primario {
+            display: inline-block; text-decoration: none; padding: 10px 22px; border-radius: 999px;
+            background: var(--accent); color: #fff; border: none;
+            font-size: 14px; font-weight: 600; cursor: pointer;
+        }
+        .btn-link-primario:hover { background: #4338CA; }
     </style>
 </head>
 <body>
 <div class="auth-card">
     <div class="auth-brand">
         <div class="logo">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="4" stroke="#4F46E5" stroke-width="2"/><path d="M8 12h8M8 8h8M8 16h5" stroke="#4F46E5" stroke-width="2" stroke-linecap="round"/></svg>
+            <img src="{{ url_for('static', filename='img/ufac-logo.png') }}" alt="Logo UFAC">
         </div>
-        <span>Sistema de Controle Financeiro</span>
+        <div class="auth-brand-text">
+            <span>SCF PROPEG</span>
+            <small>UFAC — Pró-Reitoria de Pesquisa</small>
+        </div>
     </div>
     {% with mensagens = get_flashed_messages(with_categories=true) %}
         {% for categoria, mensagem in mensagens %}

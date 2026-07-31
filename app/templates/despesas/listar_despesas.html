@@ -1,6 +1,8 @@
 {% extends "base_app.html" %}
 {% block titulo %}Despesas — {{ projeto.nome }} — SCF PROPEG{% endblock %}
 {% block conteudo %}
+<a href="{{ url_for('projetos.detalhe_projeto', projeto_id=projeto.id) }}" class="btn-link-secundario" style="margin-bottom:14px; display:inline-block;">← Voltar para o projeto</a>
+
 <div class="card">
     <h2>Despesas lançadas — {{ projeto.nome }}</h2>
     <table>
@@ -8,25 +10,34 @@
             <th>Data</th>
             <th>Responsável</th>
             <th>Alocação</th>
-            <th>Fornecedor</th>
+            <th>Natureza</th>
+            <th>Favorecido</th>
+            <th>Comprovante fiscal</th>
             <th>Valor</th>
             <th>Status</th>
-            <th>Comprovante</th>
+            <th style="text-align:right">Comprovante</th>
         </tr>
         {% for despesa in despesas %}
-        <tr>
-            <td>{{ despesa.data.strftime('%d/%m/%Y') }}</td>
+        <tr class="linha-clicavel" data-href="{{ url_for('despesas.ver_comprovante', despesa_id=despesa.id) }}">
+            <td class="mono">{{ despesa.data.strftime('%d/%m/%Y') }}</td>
             <td>{{ despesa.alocacao.usuario.nome }}</td>
-            <td>{{ despesa.alocacao.tipo_despesa.nome if despesa.alocacao.tipo_despesa else "—" }} ({{ despesa.alocacao.categoria | rotulo }})</td>
-            <td>{{ despesa.fornecedor }}</td>
-            <td>R$ {{ despesa.valor | moeda }}</td>
-            <td>{{ despesa.status | rotulo }}</td>
-            <td><a href="{{ url_for('despesas.ver_comprovante', despesa_id=despesa.id) }}" target="_blank">+ Comprovante</a></td>
+            <td>{{ despesa.alocacao.tipo_alocacao.nome if despesa.alocacao.tipo_alocacao else "—" }} ({{ despesa.alocacao.categoria | rotulo }})</td>
+            <td>{{ despesa.natureza | rotulo }}</td>
+            <td>{{ despesa.fornecedor }}{% if despesa.cnpj_favorecido %} <span class="link-muted">({{ despesa.cnpj_favorecido }})</span>{% endif %}</td>
+            <td>{{ despesa.numero_comprovante_fiscal or "—" }}</td>
+            <td class="mono">R$ {{ despesa.valor | moeda }}</td>
+            <td>
+                {% if despesa.status == "lancada" %}
+                <span class="badge badge-verde"><span class="badge-dot"></span>Lançada</span>
+                {% else %}
+                <span class="badge badge-cinza"><span class="badge-dot"></span>Estornada</span>
+                {% endif %}
+            </td>
+            <td style="text-align:right"><a href="{{ url_for('despesas.ver_comprovante', despesa_id=despesa.id) }}" target="_blank" class="btn-sm impede-clique-linha">📎 Ver</a></td>
         </tr>
         {% else %}
-        <tr><td colspan="7" class="link-muted">Nenhuma despesa lançada ainda.</td></tr>
+        <tr><td colspan="9" class="link-muted">Nenhuma despesa lançada ainda.</td></tr>
         {% endfor %}
     </table>
 </div>
-<p><a href="{{ url_for('projetos.detalhe_projeto', projeto_id=projeto.id) }}">Voltar para o projeto</a></p>
 {% endblock %}

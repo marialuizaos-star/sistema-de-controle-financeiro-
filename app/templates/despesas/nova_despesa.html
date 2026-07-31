@@ -19,10 +19,15 @@
     <h2>Adicionar comprovante</h2>
     <form method="POST" enctype="multipart/form-data">
         {{ form.hidden_tag() }}
+        {{ form.alocacao_id(style="display:none") }}
 
         <label>{{ form.data.label }}</label>
         {{ form.data() }}
         {% for erro in form.data.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
+
+        <label>{{ form.natureza.label }}</label>
+        {{ form.natureza() }}
+        {% for erro in form.natureza.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
 
         <label>{{ form.valor.label }}</label>
         {{ form.valor() }}
@@ -31,6 +36,14 @@
         <label>{{ form.fornecedor.label }}</label>
         {{ form.fornecedor() }}
         {% for erro in form.fornecedor.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
+
+        <label>{{ form.cnpj_favorecido.label }}</label>
+        {{ form.cnpj_favorecido(placeholder="00.000.000/0000-00") }}
+        {% for erro in form.cnpj_favorecido.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
+
+        <label>{{ form.numero_comprovante_fiscal.label }}</label>
+        {{ form.numero_comprovante_fiscal(placeholder="Ex: NF 000123") }}
+        {% for erro in form.numero_comprovante_fiscal.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
 
         <label>{{ form.descricao.label }}</label>
         {{ form.descricao() }}
@@ -49,7 +62,9 @@
     <table>
         <tr>
             <th>Data</th>
-            <th>Fornecedor</th>
+            <th>Natureza</th>
+            <th>Favorecido</th>
+            <th>Comprovante fiscal</th>
             <th>Valor</th>
             <th>Status</th>
             <th style="text-align:right">Ações</th>
@@ -57,7 +72,9 @@
         {% for despesa in despesas %}
         <tr>
             <td>{{ despesa.data.strftime('%d/%m/%Y') }}</td>
-            <td>{{ despesa.fornecedor }}</td>
+            <td>{{ despesa.natureza | rotulo }}</td>
+            <td>{{ despesa.fornecedor }}{% if despesa.cnpj_favorecido %} <span class="link-muted">({{ despesa.cnpj_favorecido }})</span>{% endif %}</td>
+            <td>{{ despesa.numero_comprovante_fiscal or "—" }}</td>
             <td>R$ {{ despesa.valor | moeda }}</td>
             <td>{{ despesa.status | rotulo }}</td>
             <td style="text-align:right">
@@ -72,7 +89,7 @@
             </td>
         </tr>
         {% else %}
-        <tr><td colspan="5" class="link-muted">Nenhuma despesa lançada ainda.</td></tr>
+        <tr><td colspan="7" class="link-muted">Nenhuma despesa lançada ainda.</td></tr>
         {% endfor %}
     </table>
 </div>

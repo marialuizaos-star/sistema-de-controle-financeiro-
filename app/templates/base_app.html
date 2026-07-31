@@ -6,6 +6,7 @@
     <style>
         :root {
             --navy: #2B3A55;
+            --navy-dark: #202B40;
             --ink: #1E293B;
             --muted: #64748B;
             --bg: #F1F5F9;
@@ -17,28 +18,62 @@
             --danger: #DC2626;
             --danger-soft: #FEF2F2;
             --success: #16A34A;
+            --success-soft: #ECFDF5;
+            --warning: #D97706;
+            --warning-soft: #FFFBEB;
+            --info: #0EA5E9;
+            --info-soft: #F0F9FF;
+            --gray-soft: #F1F5F9;
         }
         * { box-sizing: border-box; }
         body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--ink); }
-        .topbar { height: 6px; background: var(--navy); }
-        header { background: #fff; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 14px 24px; }
-        .brand { display: flex; align-items: center; gap: 12px; }
-        .brand h1 { font-size: 17px; margin: 0; font-weight: 700; }
-        .logo { width: 36px; height: 36px; border-radius: 8px; background: var(--accent-soft); display: flex; align-items: center; justify-content: center; }
-        .user { display: flex; align-items: center; gap: 10px; }
-        .avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--navy); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; }
-        .user-name { font-weight: 600; font-size: 14px; }
-        .user-sub { font-size: 12px; color: var(--muted); }
-        .user-menu { position: relative; }
-        .user-menu summary { cursor: pointer; list-style: none; }
-        .user-menu summary::-webkit-details-marker { display: none; }
-        .user-dropdown { position: absolute; right: 0; top: 48px; background: #fff; border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 4px 14px rgba(0,0,0,.1); min-width: 150px; padding: 6px; z-index: 30; }
-        .user-dropdown a { display: block; padding: 8px 12px; border-radius: 6px; font-size: 14px; text-decoration: none; color: var(--danger); font-weight: 600; }
-        .user-dropdown a:hover { background: var(--danger-soft); }
-        nav { background: #fff; border-bottom: 1px solid var(--border); display: flex; gap: 6px; padding: 10px 20px; }
-        .tab { border: none; background: transparent; padding: 8px 14px; border-radius: 8px; font-size: 14px; font-weight: 600; color: var(--muted); text-decoration: none; }
-        .tab.active { background: var(--accent-soft); color: var(--accent); }
-        main { max-width: 1080px; margin: 24px auto; padding: 0 20px; }
+
+        /* ===== Cabeçalho único (logo + navegação + usuário) ===== */
+        .app-header {
+            background: var(--navy);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 12px 24px;
+            flex-wrap: wrap;
+        }
+        .app-header-left { display: flex; align-items: center; gap: 12px; }
+        .app-logo {
+            width: 38px; height: 38px; border-radius: 10px;
+            background: #fff;
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0; overflow: hidden; padding: 3px;
+        }
+        .app-logo img { width: 100%; height: 100%; object-fit: contain; }
+        .app-title { color: #fff; font-size: 16px; font-weight: 700; line-height: 1.2; }
+        .app-subtitle { color: #A9B4C8; font-size: 12px; line-height: 1.2; }
+        .app-nav { display: flex; gap: 6px; }
+        .app-nav-link {
+            color: #C7D0E0; text-decoration: none; font-size: 14px; font-weight: 600;
+            padding: 8px 14px; border-radius: 8px;
+        }
+        .app-nav-link.active { background: rgba(255,255,255,0.12); color: #fff; }
+        .app-nav-link:hover { color: #fff; }
+        .app-user { display: flex; align-items: center; gap: 12px; }
+        .app-user-info { text-align: right; line-height: 1.25; }
+        .app-user-name { color: #fff; font-weight: 700; font-size: 14px; }
+        .app-user-role { color: #A9B4C8; font-size: 12px; }
+        .app-avatar {
+            width: 36px; height: 36px; border-radius: 50%; background: var(--accent);
+            color: #fff; display: flex; align-items: center; justify-content: center;
+            font-weight: 700; font-size: 13px; flex-shrink: 0;
+        }
+        .app-btn-sair {
+            background: rgba(255,255,255,0.9); color: var(--ink); text-decoration: none;
+            font-size: 13px; font-weight: 600; padding: 8px 16px; border-radius: 999px;
+            border: none;
+        }
+        .app-btn-sair:hover { background: #fff; }
+
+        main { max-width: 1120px; margin: 24px auto; padding: 0 20px; }
+
+        /* ===== Cards e formulários (mantidos das páginas já existentes) ===== */
         .card { background: var(--card); border-radius: 14px; box-shadow: 0 1px 3px rgba(0,0,0,.06); padding: 20px; margin-bottom: 20px; }
         .card h2 { font-size: 17px; margin: 0 0 14px 0; font-weight: 700; }
         table { width: 100%; border-collapse: collapse; }
@@ -49,7 +84,7 @@
         .flash.erro { background: var(--danger-soft); color: var(--danger); }
         .flash.sucesso { background: #ECFDF5; color: var(--success); }
         label { display: block; margin-top: 12px; font-weight: 600; font-size: 13px; }
-        input, select { width: 100%; padding: 8px; margin-top: 4px; box-sizing: border-box; border: 1px solid var(--border); border-radius: 8px; }
+        input, select, textarea { width: 100%; padding: 8px; margin-top: 4px; box-sizing: border-box; border: 1px solid var(--border); border-radius: 8px; font-family: inherit; }
         button { margin-top: 18px; padding: 10px 22px; background: var(--botao); color: white; border: none; border-radius: 999px; cursor: pointer; font-weight: 600; }
         button.perigo { background: var(--danger); border-radius: 999px; }
         button.sucesso { background: var(--success); border-radius: 999px; }
@@ -62,37 +97,142 @@
         .erros-campo { color: var(--danger); font-size: 13px; }
         a { color: var(--accent); }
         .link-muted { color: var(--muted); font-size: 13px; }
+
+        /* ===== Componentes do redesenho ===== */
+
+        .stat-grid { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
+        .stat-card { background: var(--card); border-radius: 14px; box-shadow: 0 1px 3px rgba(0,0,0,.06); padding: 18px 20px; flex: 1; min-width: 200px; }
+        .stat-card-top { display: flex; align-items: flex-start; justify-content: space-between; }
+        .stat-label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; font-weight: 700; }
+        .stat-icon { width: 34px; height: 34px; border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+        .stat-icon-indigo { background: var(--accent-soft); color: var(--accent); }
+        .stat-icon-green { background: var(--success-soft); color: var(--success); }
+        .stat-icon-orange { background: var(--warning-soft); color: var(--warning); }
+        .stat-icon-blue { background: var(--info-soft); color: var(--info); }
+        .stat-value { font-size: 26px; font-weight: 700; margin-top: 8px; font-family: "SF Mono", Consolas, monospace; }
+        .stat-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+        .badge { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+        .badge-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+        .badge-verde { background: var(--success-soft); color: var(--success); }
+        .badge-laranja { background: var(--warning-soft); color: var(--warning); }
+        .badge-vermelho { background: var(--danger-soft); color: var(--danger); }
+        .badge-cinza { background: var(--gray-soft); color: var(--muted); }
+        .badge-indigo { background: var(--accent-soft); color: var(--accent); }
+
+        .pill-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin: 14px 0; }
+        .pill-tab {
+            border: 1px solid var(--border); background: #fff; color: var(--ink);
+            padding: 8px 16px; border-radius: 999px; font-size: 13px; font-weight: 600;
+            text-decoration: none; cursor: pointer;
+        }
+        .pill-tab.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+        .progress-track { width: 100%; height: 8px; background: var(--gray-soft); border-radius: 999px; overflow: hidden; margin-top: 10px; }
+        .progress-fill { height: 100%; background: var(--accent); border-radius: 999px; }
+
+        .upload-area {
+            margin-top: 4px; padding: 22px; border: 2px dashed var(--border); border-radius: 12px;
+            text-align: center; cursor: pointer; background: var(--accent-soft);
+        }
+        .upload-area:hover { border-color: var(--accent); }
+
+        .mono { font-family: "SF Mono", Consolas, monospace; }
+
+        .btn-sm {
+            display: inline-block; text-decoration: none; padding: 6px 14px; border-radius: 999px;
+            background: var(--accent-soft); color: var(--accent); font-size: 12px; font-weight: 700;
+            border: none; cursor: pointer; margin: 0; line-height: 1.4;
+        }
+        .btn-sm:hover { background: var(--accent); color: #fff; }
+        .btn-sm-perigo { background: var(--danger-soft); color: var(--danger); }
+        .btn-sm-perigo:hover { background: var(--danger); color: #fff; }
+        .btn-sm-sucesso { background: var(--success-soft); color: var(--success); }
+        .btn-sm-sucesso:hover { background: var(--success); color: #fff; }
+        .btn-sm-cinza { background: var(--gray-soft); color: var(--muted); }
+        .btn-sm-cinza:hover { background: var(--muted); color: #fff; }
+
+        .btn-link-secundario {
+            display: inline-block; text-decoration: none; padding: 9px 18px; border-radius: 999px;
+            background: #fff; color: var(--ink); border: 1px solid var(--border);
+            font-size: 13px; font-weight: 600; cursor: pointer;
+        }
+        .btn-link-secundario:hover { background: var(--gray-soft); }
+        .btn-link-primario {
+            display: inline-block; text-decoration: none; padding: 10px 22px; border-radius: 999px;
+            background: var(--accent); color: #fff; border: none;
+            font-size: 14px; font-weight: 600; cursor: pointer;
+        }
+        .btn-link-primario:hover { background: #4338CA; }
+        .btn-link-primario-perigo {
+            display: inline-block; text-decoration: none; padding: 10px 22px; border-radius: 999px;
+            background: var(--danger); color: #fff; border: none;
+            font-size: 14px; font-weight: 600; cursor: pointer;
+        }
+        .btn-link-primario-perigo:hover { background: #B91C1C; }
+        .btn-link-primario-sucesso {
+            display: inline-block; text-decoration: none; padding: 10px 22px; border-radius: 999px;
+            background: var(--success); color: #fff; border: none;
+            font-size: 14px; font-weight: 600; cursor: pointer;
+        }
+        .btn-link-primario-sucesso:hover { background: #15803D; }
+
+        .linha-clicavel { cursor: pointer; }
+        .linha-clicavel:hover { background: var(--gray-soft); }
+
+        .menu-dropdown { position: relative; display: inline-block; }
+        .menu-dropdown-btn {
+            background: #fff; border: 1px solid var(--border); border-radius: 999px;
+            width: 34px; height: 34px; cursor: pointer; font-size: 15px; color: var(--ink);
+            display: inline-flex; align-items: center; justify-content: center; margin: 0;
+        }
+        .menu-dropdown-btn:hover { background: var(--gray-soft); }
+        .menu-dropdown-lista {
+            position: absolute; right: 0; top: 42px; background: #fff;
+            border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 6px 18px rgba(0,0,0,.12);
+            padding: 6px; min-width: 200px; z-index: 40; display: none;
+        }
+        .menu-dropdown-lista.aberto { display: block; }
+        .menu-dropdown-lista a, .menu-dropdown-lista button, .menu-dropdown-lista form button {
+            display: block; width: 100%; text-align: left; padding: 9px 12px; border-radius: 999px;
+            font-size: 13px; font-weight: 600; text-decoration: none; color: var(--ink);
+            background: none; border: none; margin: 2px 0; cursor: pointer;
+        }
+        .menu-dropdown-lista a:hover, .menu-dropdown-lista button:hover { background: var(--accent-soft); color: var(--accent); }
+        .menu-dropdown-lista a.perigo, .menu-dropdown-lista button.perigo { color: var(--danger); }
+        .menu-dropdown-lista a.perigo:hover, .menu-dropdown-lista button.perigo:hover { background: var(--danger-soft); }
+        .menu-dropdown-lista form { margin: 0; }
     </style>
 </head>
 <body>
-<div class="topbar"></div>
-<header>
-    <div class="brand">
-        <div class="logo">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="4" stroke="#4F46E5" stroke-width="2"/><path d="M8 12h8M8 8h8M8 16h5" stroke="#4F46E5" stroke-width="2" stroke-linecap="round"/></svg>
+<header class="app-header">
+    <div class="app-header-left">
+        <div class="app-logo">
+            <img src="{{ url_for('static', filename='img/ufac-logo.png') }}" alt="Logo UFAC">
         </div>
-        <h1>Sistema de Controle Financeiro</h1>
+        <div>
+            <div class="app-title">SCF PROPEG</div>
+            <div class="app-subtitle">UFAC — Pró-Reitoria de Pesquisa</div>
+        </div>
     </div>
-    <details class="user-menu">
-        <summary class="user">
-            <div class="avatar">{{ current_user.nome[0] | upper }}</div>
-            <div>
-                <div class="user-name">{{ current_user.nome }}</div>
-                <div class="user-sub">{{ current_user.papel }}</div>
-            </div>
-        </summary>
-        <div class="user-dropdown">
-            <a href="{{ url_for('auth.logout') }}">Sair</a>
+    <nav class="app-nav">
+        <a class="app-nav-link {{ 'active' if request.endpoint == 'auth.painel' else '' }}" href="{{ url_for('auth.painel') }}">Início</a>
+        <a class="app-nav-link {{ 'active' if request.endpoint in ['projetos.listar_projetos','projetos.novo_projeto','projetos.editar_projeto','projetos.detalhe_projeto','projetos.solicitar_projeto','projetos.projetos_pendentes','projetos.reprovar_projeto'] else '' }}" href="{{ url_for('projetos.listar_projetos') }}">Projetos</a>
+        {% if current_user.papel == "administrador" %}
+        <a class="app-nav-link {{ 'active' if request.endpoint in ['auth.listar_usuarios','auth.editar_usuario','auth.cadastro'] else '' }}" href="{{ url_for('auth.listar_usuarios') }}">Usuários</a>
+        {% endif %}
+    </nav>
+    <div class="app-user">
+        {% set partes_nome = current_user.nome.split() %}
+        {% set iniciais = (partes_nome[0][0] + (partes_nome[-1][0] if partes_nome|length > 1 else '')) | upper %}
+        <div class="app-user-info">
+            <div class="app-user-name">{{ current_user.nome }}</div>
+            <div class="app-user-role">{{ current_user.papel | rotulo }}</div>
         </div>
-    </details>
+        <div class="app-avatar">{{ iniciais }}</div>
+        <a class="app-btn-sair" href="{{ url_for('auth.logout') }}">Sair</a>
+    </div>
 </header>
-<nav>
-    <a class="tab {{ 'active' if request.endpoint == 'auth.painel' else '' }}" href="{{ url_for('auth.painel') }}">Início</a>
-    <a class="tab {{ 'active' if request.endpoint in ['projetos.listar_projetos','projetos.novo_projeto','projetos.editar_projeto','projetos.detalhe_projeto'] else '' }}" href="{{ url_for('projetos.listar_projetos') }}">Projetos</a>
-    {% if current_user.papel == "administrador" %}
-    <a class="tab {{ 'active' if request.endpoint in ['auth.listar_usuarios','auth.editar_usuario','auth.cadastro'] else '' }}" href="{{ url_for('auth.listar_usuarios') }}">Usuários</a>
-    {% endif %}
-</nav>
 <main>
     {% with mensagens = get_flashed_messages(with_categories=true) %}
         {% for categoria, mensagem in mensagens %}
@@ -101,5 +241,29 @@
     {% endwith %}
     {% block conteudo %}{% endblock %}
 </main>
+
+<script>
+    document.addEventListener('click', function (evento) {
+        var linha = evento.target.closest('.linha-clicavel');
+        if (!linha) return;
+        if (evento.target.closest('.impede-clique-linha')) return;
+        if (linha.dataset.href) {
+            window.location = linha.dataset.href;
+        }
+    });
+
+    document.addEventListener('click', function (evento) {
+        var botao = evento.target.closest('.menu-dropdown-btn');
+        document.querySelectorAll('.menu-dropdown-lista.aberto').forEach(function (lista) {
+            if (!botao || lista !== botao.nextElementSibling) {
+                lista.classList.remove('aberto');
+            }
+        });
+        if (botao) {
+            botao.nextElementSibling.classList.toggle('aberto');
+            evento.stopPropagation();
+        }
+    });
+</script>
 </body>
 </html>

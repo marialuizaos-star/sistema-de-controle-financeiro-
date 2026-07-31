@@ -1,0 +1,27 @@
+{% extends "base_app.html" %}
+{% block titulo %}Reprovar remanejamento — SCF PROPEG{% endblock %}
+{% block conteudo %}
+<a href="{{ url_for('remanejamentos.remanejamentos_pendentes') }}" class="btn-link-secundario" style="margin-bottom:14px; display:inline-block; padding:6px 14px; font-size:12px;">← Remanejamentos pendentes</a>
+
+<div class="card">
+    <h2>Reprovar remanejamento — {{ remanejamento.projeto.nome }}</h2>
+    <p class="link-muted">
+        Pedido de {{ remanejamento.solicitado_por.nome }}: mover R$ {{ remanejamento.valor | moeda }}
+        de "{{ remanejamento.alocacao_origem.tipo_alocacao.nome if remanejamento.alocacao_origem.tipo_alocacao else '—' }}"
+        para "{{ remanejamento.alocacao_destino.tipo_alocacao.nome if remanejamento.alocacao_destino.tipo_alocacao else '—' }}".
+        {% if remanejamento.justificativa %}<br>Justificativa: {{ remanejamento.justificativa }}{% endif %}
+    </p>
+    <form method="POST">
+        {{ form.hidden_tag() }}
+
+        <label>{{ form.motivo_reprovacao.label }}</label>
+        {{ form.motivo_reprovacao(rows=4) }}
+        {% for erro in form.motivo_reprovacao.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
+
+        <div style="display:flex; gap:10px; align-items:center;">
+            <button type="submit" class="perigo">Confirmar reprovação</button>
+            <a href="{{ url_for('projetos.detalhe_projeto', projeto_id=remanejamento.projeto_id) }}" class="btn-link-secundario" style="margin-top:18px;">Cancelar</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

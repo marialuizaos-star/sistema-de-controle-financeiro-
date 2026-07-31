@@ -1,0 +1,148 @@
+{% extends "base_app.html" %}
+{% block titulo %}Solicitar novo projeto — SCF PROPEG{% endblock %}
+{% block conteudo %}
+<a href="{{ url_for('projetos.listar_projetos') }}" class="btn-link-secundario" style="margin-bottom:14px; display:inline-block; padding:6px 14px; font-size:12px;">← Projetos</a>
+
+<div class="card">
+    <h2>Solicitar novo projeto</h2>
+    <p class="link-muted">
+        Preencha os dados do projeto e o plano de trabalho (como pretende distribuir o valor total
+        entre os itens de gasto, e o papel de cada responsável). Tudo será enviado junto para aprovação
+        do administrador — só depois de aprovado é que será possível lançar despesas de verdade.
+    </p>
+    <form method="POST" id="form-solicitar-projeto">
+        {{ form.hidden_tag() }}
+
+        <label>{{ form.nome.label }}</label>
+        {{ form.nome() }}
+        {% for erro in form.nome.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
+
+        <label>{{ form.valor_total.label }}</label>
+        {{ form.valor_total() }}
+        {% for erro in form.valor_total.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
+
+        <label>{{ form.vigencia_inicio.label }}</label>
+        {{ form.vigencia_inicio() }}
+        {% for erro in form.vigencia_inicio.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
+
+        <label>{{ form.vigencia_fim.label }}</label>
+        {{ form.vigencia_fim() }}
+        {% for erro in form.vigencia_fim.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
+
+        <h3 style="margin-top:24px; margin-bottom:0;">Plano de trabalho</h3>
+        <p class="link-muted" style="margin-top:4px;">O que pretende gastar, item por item (ex: alimentação, passagens, diárias), e o papel de quem é responsável por cada item.</p>
+        {% for erro in form.itens_plano.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
+
+        <div id="itens-plano-container">
+            {% for item in form.itens_plano %}
+            <div class="item-plano" style="border:1px solid var(--border); border-radius:10px; padding:14px; margin-top:12px;">
+                <div style="display:flex; gap:12px; align-items:flex-start; flex-wrap:wrap;">
+                    <div style="flex:1; min-width:160px;">
+                        <label style="margin-top:0;">{{ item.form.papel_projeto.label }}</label>
+                        {{ item.form.papel_projeto() }}
+                        {% for erro in item.form.papel_projeto.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
+                    </div>
+                    <div style="flex:1; min-width:180px;">
+                        <label style="margin-top:0;">{{ item.form.tipo_alocacao_id.label }}</label>
+                        {{ item.form.tipo_alocacao_id() }}
+                        {% for erro in item.form.tipo_alocacao_id.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
+                    </div>
+                    <div style="flex:1; min-width:140px;">
+                        <label style="margin-top:0;">{{ item.form.categoria.label }}</label>
+                        {{ item.form.categoria() }}
+                    </div>
+                    <div style="flex:1; min-width:140px;">
+                        <label style="margin-top:0;">{{ item.form.valor_alocado.label }}</label>
+                        {{ item.form.valor_alocado() }}
+                        {% for erro in item.form.valor_alocado.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
+                    </div>
+                    <div style="padding-top:26px;">
+                        <button type="button" class="btn-sm btn-sm-perigo remover-item" style="margin-top:0;">Remover</button>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <p style="margin-top:14px;">
+            <button type="button" id="btn-adicionar-item" style="margin-top:0; background:var(--accent-soft); color:var(--accent);">+ Adicionar item ao plano</button>
+        </p>
+
+        <div style="display:flex; gap:10px; align-items:center;">
+            <button type="submit">Enviar para aprovação</button>
+            <a href="{{ url_for('projetos.listar_projetos') }}" class="btn-link-secundario" style="margin-top:18px;">Cancelar</a>
+        </div>
+    </form>
+</div>
+
+<script id="opcoes-tipo-alocacao" type="application/json">{{ opcoes_tipo_alocacao | tojson }}</script>
+<script>
+(function () {
+    const opcoesTipoAlocacao = JSON.parse(document.getElementById('opcoes-tipo-alocacao').textContent);
+    const opcoesCategoria = [["custeio", "Custeio"], ["capital", "Capital"]];
+    const opcoesPapelProjeto = [
+        ["coordenador", "Coordenador"],
+        ["pesquisador", "Pesquisador"],
+        ["bolsista", "Bolsista"],
+        ["tecnico", "Técnico"],
+        ["colaborador", "Colaborador"],
+    ];
+    const container = document.getElementById('itens-plano-container');
+    let proximoIndice = container.querySelectorAll('.item-plano').length;
+
+    function montarOptions(opcoes) {
+        return opcoes.map(function (par) {
+            return '<option value="' + par[0] + '">' + par[1] + '</option>';
+        }).join('');
+    }
+
+    function criarLinhaItem(indice) {
+        const div = document.createElement('div');
+        div.className = 'item-plano';
+        div.style.border = '1px solid var(--border)';
+        div.style.borderRadius = '10px';
+        div.style.padding = '14px';
+        div.style.marginTop = '12px';
+        div.innerHTML =
+            '<div style="display:flex; gap:12px; align-items:flex-start; flex-wrap:wrap;">' +
+                '<div style="flex:1; min-width:160px;">' +
+                    '<label style="margin-top:0;">Papel no projeto</label>' +
+                    '<select name="itens_plano-' + indice + '-papel_projeto">' + montarOptions(opcoesPapelProjeto) + '</select>' +
+                '</div>' +
+                '<div style="flex:1; min-width:180px;">' +
+                    '<label style="margin-top:0;">Tipo de alocação</label>' +
+                    '<select name="itens_plano-' + indice + '-tipo_alocacao_id">' + montarOptions(opcoesTipoAlocacao) + '</select>' +
+                '</div>' +
+                '<div style="flex:1; min-width:140px;">' +
+                    '<label style="margin-top:0;">Categoria</label>' +
+                    '<select name="itens_plano-' + indice + '-categoria">' + montarOptions(opcoesCategoria) + '</select>' +
+                '</div>' +
+                '<div style="flex:1; min-width:140px;">' +
+                    '<label style="margin-top:0;">Valor (R$)</label>' +
+                    '<input type="text" name="itens_plano-' + indice + '-valor_alocado" placeholder="0,00">' +
+                '</div>' +
+                '<div style="padding-top:26px;">' +
+                    '<button type="button" class="btn-sm btn-sm-perigo remover-item" style="margin-top:0;">Remover</button>' +
+                '</div>' +
+            '</div>';
+        return div;
+    }
+
+    document.getElementById('btn-adicionar-item').addEventListener('click', function () {
+        container.appendChild(criarLinhaItem(proximoIndice));
+        proximoIndice += 1;
+    });
+
+    container.addEventListener('click', function (evento) {
+        if (evento.target.classList.contains('remover-item')) {
+            const linhas = container.querySelectorAll('.item-plano');
+            if (linhas.length > 1) {
+                evento.target.closest('.item-plano').remove();
+            } else {
+                alert('É preciso manter ao menos um item no plano de trabalho.');
+            }
+        }
+    });
+})();
+</script>
+{% endblock %}

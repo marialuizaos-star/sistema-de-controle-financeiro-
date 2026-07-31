@@ -1,6 +1,8 @@
 {% extends "base_app.html" %}
 {% block titulo %}Editar usuário — SCF PROPEG{% endblock %}
 {% block conteudo %}
+<a href="{{ url_for('auth.listar_usuarios') }}" class="btn-link-secundario" style="margin-bottom:14px; display:inline-block; padding:6px 14px; font-size:12px;">← Usuários</a>
+
 <div class="card">
     <h2>Editar usuário</h2>
     <form method="POST">
@@ -17,18 +19,28 @@
         <label>{{ form.telefone.label }}</label>
         {{ form.telefone() }}
 
+        <label>{{ form.departamento.label }}</label>
+        {{ form.departamento() }}
+
         <label>{{ form.papel.label }}</label>
         {{ form.papel() }}
 
-        <button type="submit">Salvar alterações</button>
+        <div style="display:flex; gap:10px; align-items:center;">
+            <button type="submit">Salvar alterações</button>
+            <a href="{{ url_for('auth.listar_usuarios') }}" class="btn-link-secundario" style="margin-top:18px;">Cancelar</a>
+        </div>
     </form>
-    <p style="margin-top:14px"><a href="{{ url_for('auth.listar_usuarios') }}">Voltar</a></p>
 </div>
 
 <div class="card">
     <h2>Status da conta</h2>
     <p class="link-muted">
-        Status atual: <strong>{{ "Ativo" if usuario.ativo else "Inativo" }}</strong>
+        Status atual:
+        {% if usuario.ativo %}
+        <span class="badge badge-verde"><span class="badge-dot"></span>Ativo</span>
+        {% else %}
+        <span class="badge badge-cinza"><span class="badge-dot"></span>Inativo</span>
+        {% endif %}
     </p>
     {% if usuario.id != current_user.id %}
     <form method="POST" action="{{ url_for('auth.alternar_status_usuario', usuario_id=usuario.id) }}">

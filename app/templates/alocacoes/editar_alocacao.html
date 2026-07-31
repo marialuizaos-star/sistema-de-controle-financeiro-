@@ -1,6 +1,8 @@
 {% extends "base_app.html" %}
 {% block titulo %}Editar alocação — SCF PROPEG{% endblock %}
 {% block conteudo %}
+<a href="{{ url_for('projetos.detalhe_projeto', projeto_id=projeto.id) }}" class="btn-link-secundario" style="margin-bottom:14px; display:inline-block; padding:6px 14px; font-size:12px;">← {{ projeto.nome }}</a>
+
 <div class="card">
     <h2>Editar alocação — {{ projeto.nome }}</h2>
     <form method="POST">
@@ -10,9 +12,9 @@
         {{ form.usuario_id() }}
         {% for erro in form.usuario_id.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
 
-        <label>{{ form.tipo_despesa_id.label }}</label>
-        {{ form.tipo_despesa_id() }}
-        {% for erro in form.tipo_despesa_id.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
+        <label>{{ form.tipo_alocacao_id.label }}</label>
+        {{ form.tipo_alocacao_id() }}
+        {% for erro in form.tipo_alocacao_id.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
 
         <label>{{ form.categoria.label }}</label>
         {{ form.categoria() }}
@@ -21,8 +23,10 @@
         {{ form.valor_alocado() }}
         {% for erro in form.valor_alocado.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
 
-        <button type="submit">Salvar alterações</button>
+        <div style="display:flex; gap:10px; align-items:center;">
+            <button type="submit">Salvar alterações</button>
+            <a href="{{ url_for('projetos.detalhe_projeto', projeto_id=projeto.id) }}" class="btn-link-secundario" style="margin-top:18px;">Cancelar</a>
+        </div>
     </form>
-    <p style="margin-top:14px"><a href="{{ url_for('projetos.detalhe_projeto', projeto_id=projeto.id) }}">Voltar</a></p>
 </div>
 {% endblock %}

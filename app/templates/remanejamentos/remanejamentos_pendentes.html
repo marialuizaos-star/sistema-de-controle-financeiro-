@@ -1,0 +1,38 @@
+{% extends "base_app.html" %}
+{% block titulo %}Remanejamentos pendentes — SCF PROPEG{% endblock %}
+{% block conteudo %}
+<a href="{{ url_for('projetos.listar_projetos') }}" class="btn-link-secundario" style="margin-bottom:14px; display:inline-block;">← Voltar para Projetos</a>
+
+<div class="card">
+    <h2>Remanejamentos aguardando aprovação</h2>
+    <p class="link-muted">Pedidos de movimentação de verba entre alocações, enviados por usuários.</p>
+    <table>
+        <tr>
+            <th>Projeto</th>
+            <th>Solicitante</th>
+            <th>De</th>
+            <th>Para</th>
+            <th>Valor</th>
+            <th style="text-align:right">Ações</th>
+        </tr>
+        {% for remanejamento in remanejamentos %}
+        <tr class="linha-clicavel" data-href="{{ url_for('projetos.detalhe_projeto', projeto_id=remanejamento.projeto_id) }}">
+            <td>{{ remanejamento.projeto.nome }}</td>
+            <td>{{ remanejamento.solicitado_por.nome }}</td>
+            <td>{{ remanejamento.alocacao_origem.tipo_alocacao.nome if remanejamento.alocacao_origem.tipo_alocacao else "—" }}</td>
+            <td>{{ remanejamento.alocacao_destino.tipo_alocacao.nome if remanejamento.alocacao_destino.tipo_alocacao else "—" }}</td>
+            <td class="mono">R$ {{ remanejamento.valor | moeda }}</td>
+            <td style="text-align:right" class="impede-clique-linha">
+                <form method="POST" action="{{ url_for('remanejamentos.aprovar_remanejamento', remanejamento_id=remanejamento.id) }}" style="display:inline"
+                      onsubmit="return confirm('Aprovar e executar este remanejamento?');">
+                    <button type="submit" class="btn-sm btn-sm-sucesso">Aprovar</button>
+                </form>
+                <a href="{{ url_for('remanejamentos.reprovar_remanejamento', remanejamento_id=remanejamento.id) }}" class="btn-sm btn-sm-perigo">Reprovar</a>
+            </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" class="link-muted">Nenhum remanejamento aguardando aprovação no momento.</td></tr>
+        {% endfor %}
+    </table>
+</div>
+{% endblock %}

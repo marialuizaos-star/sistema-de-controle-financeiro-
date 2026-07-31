@@ -1,0 +1,36 @@
+{% extends "base_app.html" %}
+{% block titulo %}Projetos pendentes — SCF PROPEG{% endblock %}
+{% block conteudo %}
+<a href="{{ url_for('projetos.listar_projetos') }}" class="btn-link-secundario" style="margin-bottom:14px; display:inline-block;">← Voltar para Projetos</a>
+
+<div class="card">
+    <h2>Projetos aguardando aprovação</h2>
+    <p class="link-muted">Cadastros enviados por usuários, ainda não aprovados nem reprovados.</p>
+    <table>
+        <tr>
+            <th>Nome</th>
+            <th>Solicitante</th>
+            <th>Valor total</th>
+            <th>Vigência</th>
+            <th style="text-align:right">Ações</th>
+        </tr>
+        {% for projeto in projetos %}
+        <tr class="linha-clicavel" data-href="{{ url_for('projetos.detalhe_projeto', projeto_id=projeto.id) }}">
+            <td>{{ projeto.nome }}</td>
+            <td>{{ projeto.criado_por.nome if projeto.criado_por else "—" }}</td>
+            <td class="mono">R$ {{ projeto.valor_total | moeda }}</td>
+            <td class="mono">{{ projeto.vigencia_inicio.strftime('%d/%m/%Y') }} a {{ projeto.vigencia_fim.strftime('%d/%m/%Y') }}</td>
+            <td style="text-align:right" class="impede-clique-linha">
+                <form method="POST" action="{{ url_for('projetos.aprovar_projeto', projeto_id=projeto.id) }}" style="display:inline"
+                      onsubmit="return confirm('Aprovar este projeto? Ele passará a ter status Ativo.');">
+                    <button type="submit" class="btn-sm btn-sm-sucesso">Aprovar</button>
+                </form>
+                <a href="{{ url_for('projetos.reprovar_projeto', projeto_id=projeto.id) }}" class="btn-sm btn-sm-perigo">Reprovar</a>
+            </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5" class="link-muted">Nenhum projeto aguardando aprovação no momento.</td></tr>
+        {% endfor %}
+    </table>
+</div>
+{% endblock %}
