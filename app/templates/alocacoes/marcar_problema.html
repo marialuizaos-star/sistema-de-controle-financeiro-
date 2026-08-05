@@ -1,0 +1,20 @@
+{% extends "base_app.html" %}
+{% block titulo %}Marcar problema — SCF PROPEG{% endblock %}
+{% block conteudo %}
+<a href="{{ url_for('projetos.detalhe_projeto', projeto_id=alocacao.projeto_id) }}" class="btn-link-secundario" style="margin-bottom:14px; display:inline-block; padding:6px 14px; font-size:12px;">← {{ alocacao.projeto.nome }}</a>
+
+<div class="card">
+    <h2>Marcar problema na alocação</h2>
+    <p class="link-muted">{{ alocacao.tipo_alocacao.nome if alocacao.tipo_alocacao else "Alocação" }} — {{ alocacao.usuario.nome }} — R$ {{ alocacao.valor_alocado | moeda }}</p>
+    <form method="POST">
+        {{ form.hidden_tag() }}
+        <label>{{ form.motivo.label }}</label>
+        {{ form.motivo(rows=4) }}
+        {% for erro in form.motivo.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
+        <div style="display:flex; gap:10px; align-items:center;">
+            <button type="submit" class="perigo">Salvar marcação</button>
+            <a href="{{ url_for('projetos.detalhe_projeto', projeto_id=alocacao.projeto_id) }}" class="btn-link-secundario" style="margin-top:18px;">Cancelar</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

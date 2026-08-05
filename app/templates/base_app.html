@@ -28,7 +28,6 @@
         * { box-sizing: border-box; }
         body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--ink); }
 
-        /* ===== Cabeçalho único (logo + navegação + usuário) ===== */
         .app-header {
             background: var(--navy);
             display: flex;
@@ -73,7 +72,6 @@
 
         main { max-width: 1120px; margin: 24px auto; padding: 0 20px; }
 
-        /* ===== Cards e formulários (mantidos das páginas já existentes) ===== */
         .card { background: var(--card); border-radius: 14px; box-shadow: 0 1px 3px rgba(0,0,0,.06); padding: 20px; margin-bottom: 20px; }
         .card h2 { font-size: 17px; margin: 0 0 14px 0; font-weight: 700; }
         table { width: 100%; border-collapse: collapse; }
@@ -97,8 +95,6 @@
         .erros-campo { color: var(--danger); font-size: 13px; }
         a { color: var(--accent); }
         .link-muted { color: var(--muted); font-size: 13px; }
-
-        /* ===== Componentes do redesenho ===== */
 
         .stat-grid { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
         .stat-card { background: var(--card); border-radius: 14px; box-shadow: 0 1px 3px rgba(0,0,0,.06); padding: 18px 20px; flex: 1; min-width: 200px; }
@@ -202,6 +198,45 @@
         .menu-dropdown-lista a.perigo, .menu-dropdown-lista button.perigo { color: var(--danger); }
         .menu-dropdown-lista a.perigo:hover, .menu-dropdown-lista button.perigo:hover { background: var(--danger-soft); }
         .menu-dropdown-lista form { margin: 0; }
+
+        .sino-wrapper { position: relative; display: inline-block; }
+        .sino-btn {
+            background: rgba(255,255,255,0.12); border: none; border-radius: 999px;
+            width: 36px; height: 36px; cursor: pointer; font-size: 16px; color: #fff;
+            display: inline-flex; align-items: center; justify-content: center; margin: 0;
+            position: relative;
+        }
+        .sino-btn:hover { background: rgba(255,255,255,0.22); }
+        .sino-contador {
+            position: absolute; top: -3px; right: -3px; background: var(--danger); color: #fff;
+            font-size: 10px; font-weight: 700; border-radius: 999px; min-width: 16px; height: 16px;
+            display: flex; align-items: center; justify-content: center; padding: 0 3px; line-height: 1;
+        }
+        .sino-lista {
+            position: absolute; right: 0; top: 44px; background: #fff;
+            border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 6px 18px rgba(0,0,0,.12);
+            padding: 8px; width: 320px; max-width: 85vw; z-index: 50; display: none;
+        }
+        .sino-lista.aberto { display: block; }
+        .sino-item {
+            display: block; padding: 10px 12px; border-radius: 10px; text-decoration: none;
+            color: var(--ink); font-size: 13px; margin-bottom: 2px;
+        }
+        .sino-item:hover { background: var(--gray-soft); }
+        .sino-item.nao-lida { background: var(--accent-soft); }
+        .sino-item-data { font-size: 11px; color: var(--muted); margin-top: 3px; }
+        .sino-vazio { padding: 20px 12px; text-align: center; color: var(--muted); font-size: 13px; }
+        .sino-rodape {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 8px 6px 2px; border-top: 1px solid var(--border); margin-top: 6px;
+        }
+        .sino-rodape a { font-size: 12px; font-weight: 600; }
+        .sino-rodape button {
+            font-size: 12px; font-weight: 600; margin: 0; padding: 4px 10px;
+            background: none; color: var(--muted); border: none; cursor: pointer;
+        }
+        .sino-rodape button:hover { color: var(--accent); }
+        .sino-rodape form { margin: 0; }
     </style>
 </head>
 <body>
@@ -221,8 +256,37 @@
         {% if current_user.papel == "administrador" %}
         <a class="app-nav-link {{ 'active' if request.endpoint in ['auth.listar_usuarios','auth.editar_usuario','auth.cadastro'] else '' }}" href="{{ url_for('auth.listar_usuarios') }}">Usuários</a>
         {% endif %}
+        <a class="app-nav-link {{ 'active' if request.endpoint == 'auth.ajuda' else '' }}" href="{{ url_for('auth.ajuda') }}">Ajuda</a>
     </nav>
     <div class="app-user">
+        <div class="sino-wrapper">
+            <button type="button" class="sino-btn" aria-label="Notificações">
+                🔔
+                {% if total_notificacoes_nao_lidas > 0 %}
+                <span class="sino-contador">{{ total_notificacoes_nao_lidas if total_notificacoes_nao_lidas <= 9 else '9+' }}</span>
+                {% endif %}
+            </button>
+            <div class="sino-lista">
+                {% if notificacoes_recentes %}
+                    {% for notificacao in notificacoes_recentes %}
+                    <a href="{{ url_for('notificacoes.abrir', notificacao_id=notificacao.id) }}" class="sino-item {{ '' if notificacao.lida else 'nao-lida' }}">
+                        <div>{{ notificacao.mensagem }}</div>
+                        <div class="sino-item-data">{{ notificacao.criado_em.strftime('%d/%m/%Y %H:%M') }}</div>
+                    </a>
+                    {% endfor %}
+                {% else %}
+                <div class="sino-vazio">Nenhuma notificação ainda.</div>
+                {% endif %}
+                <div class="sino-rodape">
+                    <a href="{{ url_for('notificacoes.listar') }}">Ver todas</a>
+                    {% if total_notificacoes_nao_lidas > 0 %}
+                    <form method="POST" action="{{ url_for('notificacoes.marcar_todas_lidas') }}">
+                        <button type="submit">Marcar todas como lidas</button>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
         {% set partes_nome = current_user.nome.split() %}
         {% set iniciais = (partes_nome[0][0] + (partes_nome[-1][0] if partes_nome|length > 1 else '')) | upper %}
         <div class="app-user-info">
@@ -263,6 +327,46 @@
             botao.nextElementSibling.classList.toggle('aberto');
             evento.stopPropagation();
         }
+    });
+
+    document.addEventListener('click', function (evento) {
+        var botaoSino = evento.target.closest('.sino-btn');
+        document.querySelectorAll('.sino-lista.aberto').forEach(function (lista) {
+            if (!botaoSino || lista !== botaoSino.nextElementSibling) {
+                lista.classList.remove('aberto');
+            }
+        });
+        if (botaoSino) {
+            botaoSino.nextElementSibling.classList.toggle('aberto');
+            evento.stopPropagation();
+        }
+    });
+
+    function aplicarMascaraMoeda(campo) {
+        var digitos = campo.value.replace(/\D/g, '');
+        if (!digitos) {
+            campo.value = '';
+            return;
+        }
+        var numero = (parseInt(digitos, 10) / 100).toFixed(2);
+        var partes = numero.split('.');
+        var parteInteira = partes[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+        campo.value = parteInteira + ',' + partes[1];
+    }
+
+    document.querySelectorAll('.campo-moeda').forEach(function (campo) {
+        aplicarMascaraMoeda(campo);
+        campo.addEventListener('input', function () {
+            aplicarMascaraMoeda(campo);
+        });
+    });
+
+    document.querySelectorAll('form').forEach(function (form) {
+        form.addEventListener('submit', function () {
+            form.querySelectorAll('.campo-moeda').forEach(function (campo) {
+                campo.value = campo.value.replace(/\./g, '').replace(',', '.');
+            });
+        });
     });
 </script>
 </body>

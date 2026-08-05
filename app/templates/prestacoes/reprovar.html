@@ -1,0 +1,25 @@
+{% extends "base_app.html" %}
+{% block titulo %}Reprovar prestação de contas — SCF PROPEG{% endblock %}
+{% block conteudo %}
+<a href="{{ url_for('projetos.detalhe_projeto', projeto_id=projeto.id) }}" class="btn-link-secundario" style="margin-bottom:14px; display:inline-block; padding:6px 14px; font-size:12px;">← {{ projeto.nome }}</a>
+
+<div class="card">
+    <h2>Reprovar prestação de contas — {{ projeto.nome }}</h2>
+    <p class="link-muted">
+        O solicitante poderá corrigir o que for necessário e reenviar a prestação de contas depois.
+        Nenhum registro é excluído.
+    </p>
+    <form method="POST">
+        {{ form.hidden_tag() }}
+
+        <label>{{ form.motivo_reprovacao.label }}</label>
+        {{ form.motivo_reprovacao(rows=4) }}
+        {% for erro in form.motivo_reprovacao.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
+
+        <div style="display:flex; gap:10px; align-items:center;">
+            <button type="submit" class="perigo">Confirmar reprovação</button>
+            <a href="{{ url_for('projetos.detalhe_projeto', projeto_id=projeto.id) }}" class="btn-link-secundario" style="margin-top:18px;">Cancelar</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

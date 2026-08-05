@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block titulo %}Trocar senha — SCF PROPEG{% endblock %}
+{% block conteudo %}
+<h2>Troque sua senha</h2>
+<p style="text-align:center; font-size:13px; color:var(--muted); margin-top:-10px;">
+    Este é seu primeiro acesso. Defina uma nova senha para continuar.
+</p>
+<form method="POST">
+    {{ form.hidden_tag() }}
+
+    <label>{{ form.senha_atual.label }}</label>
+    {{ form.senha_atual() }}
+    {% for erro in form.senha_atual.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
+
+    <label>{{ form.nova_senha.label }}</label>
+    {{ form.nova_senha() }}
+    {% for erro in form.nova_senha.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
+
+    <label>{{ form.confirmar_senha.label }}</label>
+    {{ form.confirmar_senha() }}
+    {% for erro in form.confirmar_senha.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
+
+    <button type="submit">Trocar senha e continuar</button>
+</form>
+{% endblock %}

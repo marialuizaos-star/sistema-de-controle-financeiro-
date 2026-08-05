@@ -45,7 +45,7 @@
             </div>
             <div style="flex:1; min-width:200px;">
                 <label>{{ form.valor.label }}</label>
-                {{ form.valor() }}
+                {{ form.valor(type="text", inputmode="numeric", class="campo-moeda", placeholder="0,00") }}
                 {% for erro in form.valor.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
             </div>
         </div>
@@ -92,6 +92,7 @@
             <th style="text-align:right">Ações</th>
         </tr>
         {% for despesa in despesas %}
+        {% set cor_despesa = {"lancada": "verde", "estornada": "cinza", "reprovada": "vermelho"}.get(despesa.status, "cinza") %}
         <tr class="linha-clicavel" data-href="{{ url_for('despesas.ver_comprovante', despesa_id=despesa.id) }}">
             <td class="mono">{{ despesa.data.strftime('%d/%m/%Y') }}</td>
             <td>
@@ -107,18 +108,13 @@
             <td><a href="{{ url_for('despesas.ver_comprovante', despesa_id=despesa.id) }}" target="_blank" class="btn-sm impede-clique-linha">📎 Ver</a></td>
             <td class="mono">R$ {{ despesa.valor | moeda }}</td>
             <td>
-                {% if despesa.status == "lancada" %}
-                <span class="badge badge-verde"><span class="badge-dot"></span>Lançada</span>
-                {% else %}
-                <span class="badge badge-cinza"><span class="badge-dot"></span>Estornada</span>
-                {% endif %}
+                <span class="badge badge-{{ cor_despesa }}"><span class="badge-dot"></span>{{ despesa.status | rotulo }}</span>
+                {% if despesa.motivo_status %}<div class="link-muted" style="font-size:11px; margin-top:3px;">{{ despesa.motivo_status }}</div>{% endif %}
             </td>
             <td style="text-align:right" class="impede-clique-linha">
                 {% if current_user.papel == "administrador" and despesa.status == "lancada" %}
-                <form method="POST" action="{{ url_for('despesas.estornar_despesa', despesa_id=despesa.id) }}" style="display:inline"
-                      onsubmit="return confirm('Estornar esta despesa? O valor volta pro saldo da alocação.');">
-                    <button type="submit" class="btn-sm btn-sm-perigo" style="margin-top:0;">Estornar</button>
-                </form>
+                <a href="{{ url_for('despesas.estornar_despesa', despesa_id=despesa.id) }}" class="btn-sm btn-sm-perigo">Estornar</a>
+                <a href="{{ url_for('despesas.reprovar_despesa', despesa_id=despesa.id) }}" class="btn-sm btn-sm-perigo">Reprovar</a>
                 {% endif %}
             </td>
         </tr>

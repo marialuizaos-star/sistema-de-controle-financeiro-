@@ -52,7 +52,7 @@
             </div>
             <div style="flex:1; min-width:220px;">
                 <label>{{ form.valor_alocado.label }}</label>
-                {{ form.valor_alocado() }}
+                {{ form.valor_alocado(type="text", inputmode="numeric", class="campo-moeda", placeholder="0,00") }}
                 {% for erro in form.valor_alocado.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
             </div>
         </div>
@@ -63,4 +63,21 @@
         </div>
     </form>
 </div>
+
+<script id="mapa-categoria-padrao" type="application/json">{{ mapa_categoria_padrao | tojson }}</script>
+<script>
+(function () {
+    var mapaCategoriaPadrao = JSON.parse(document.getElementById('mapa-categoria-padrao').textContent);
+    var campoTipo = document.querySelector('select[name="tipo_alocacao_id"]');
+    var campoCategoria = document.querySelector('select[name="categoria"]');
+    if (campoTipo && campoCategoria) {
+        campoTipo.addEventListener('change', function () {
+            var sugestao = mapaCategoriaPadrao[campoTipo.value];
+            if (sugestao) {
+                campoCategoria.value = sugestao;
+            }
+        });
+    }
+})();
+</script>
 {% endblock %}

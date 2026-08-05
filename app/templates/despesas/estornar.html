@@ -1,0 +1,20 @@
+{% extends "base_app.html" %}
+{% block titulo %}Estornar despesa — SCF PROPEG{% endblock %}
+{% block conteudo %}
+<a href="{{ url_for('projetos.detalhe_projeto', projeto_id=despesa.alocacao.projeto_id) }}" class="btn-link-secundario" style="margin-bottom:14px; display:inline-block; padding:6px 14px; font-size:12px;">← {{ despesa.alocacao.projeto.nome }}</a>
+
+<div class="card">
+    <h2>Estornar despesa</h2>
+    <p class="link-muted">{{ despesa.fornecedor }} — R$ {{ despesa.valor | moeda }} — {{ despesa.data.strftime('%d/%m/%Y') }}. O valor volta pro saldo da alocação.</p>
+    <form method="POST">
+        {{ form.hidden_tag() }}
+        <label>{{ form.motivo.label }}</label>
+        {{ form.motivo(rows=4) }}
+        {% for erro in form.motivo.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
+        <div style="display:flex; gap:10px; align-items:center;">
+            <button type="submit" class="perigo">Confirmar estorno</button>
+            <a href="{{ url_for('projetos.detalhe_projeto', projeto_id=despesa.alocacao.projeto_id) }}" class="btn-link-secundario" style="margin-top:18px;">Cancelar</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

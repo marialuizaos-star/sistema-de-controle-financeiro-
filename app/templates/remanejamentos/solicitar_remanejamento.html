@@ -56,7 +56,7 @@
         </div>
 
         <label>{{ form.valor.label }}</label>
-        {{ form.valor() }}
+        {{ form.valor(type="text", inputmode="numeric", class="campo-moeda", placeholder="0,00") }}
         {% for erro in form.valor.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
 
         <label>{{ form.justificativa.label }}</label>

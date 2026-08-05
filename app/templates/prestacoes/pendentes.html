@@ -1,0 +1,30 @@
+{% extends "base_app.html" %}
+{% block titulo %}Prestações de contas pendentes — SCF PROPEG{% endblock %}
+{% block conteudo %}
+<a href="{{ url_for('projetos.listar_projetos') }}" class="btn-link-secundario" style="margin-bottom:14px; display:inline-block; padding:6px 14px; font-size:12px;">← Projetos</a>
+
+<div class="card">
+    <h2>Prestações de contas aguardando análise</h2>
+    <p class="link-muted">Projetos cuja prestação de contas foi enviada e ainda não foi aceita nem reprovada.</p>
+    <table>
+        <tr>
+            <th>Projeto</th>
+            <th>Solicitante</th>
+            <th>Enviada em</th>
+            <th style="text-align:right">Ações</th>
+        </tr>
+        {% for projeto in projetos %}
+        <tr class="linha-clicavel" data-href="{{ url_for('projetos.detalhe_projeto', projeto_id=projeto.id) }}">
+            <td>{{ projeto.nome }}</td>
+            <td>{{ projeto.criado_por.nome if projeto.criado_por else "—" }}</td>
+            <td class="mono">{{ projeto.enviada_em_prestacao.strftime('%d/%m/%Y %H:%M') if projeto.enviada_em_prestacao else "—" }}</td>
+            <td style="text-align:right" class="impede-clique-linha">
+                <a href="{{ url_for('projetos.detalhe_projeto', projeto_id=projeto.id) }}" class="btn-sm">Revisar</a>
+            </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4" class="link-muted">Nenhuma prestação de contas pendente no momento.</td></tr>
+        {% endfor %}
+    </table>
+</div>
+{% endblock %}

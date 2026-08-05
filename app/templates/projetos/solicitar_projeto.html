@@ -18,7 +18,7 @@
         {% for erro in form.nome.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
 
         <label>{{ form.valor_total.label }}</label>
-        {{ form.valor_total() }}
+        {{ form.valor_total(type="text", inputmode="numeric", class="campo-moeda", placeholder="0,00") }}
         {% for erro in form.valor_total.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
 
         <label>{{ form.vigencia_inicio.label }}</label>
@@ -53,7 +53,7 @@
                     </div>
                     <div style="flex:1; min-width:140px;">
                         <label style="margin-top:0;">{{ item.form.valor_alocado.label }}</label>
-                        {{ item.form.valor_alocado() }}
+                        {{ item.form.valor_alocado(type="text", inputmode="numeric", class="campo-moeda", placeholder="0,00") }}
                         {% for erro in item.form.valor_alocado.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
                     </div>
                     <div style="padding-top:26px;">
@@ -76,9 +76,11 @@
 </div>
 
 <script id="opcoes-tipo-alocacao" type="application/json">{{ opcoes_tipo_alocacao | tojson }}</script>
+<script id="mapa-categoria-padrao" type="application/json">{{ mapa_categoria_padrao | tojson }}</script>
 <script>
 (function () {
     const opcoesTipoAlocacao = JSON.parse(document.getElementById('opcoes-tipo-alocacao').textContent);
+    const mapaCategoriaPadrao = JSON.parse(document.getElementById('mapa-categoria-padrao').textContent);
     const opcoesCategoria = [["custeio", "Custeio"], ["capital", "Capital"]];
     const opcoesPapelProjeto = [
         ["coordenador", "Coordenador"],
@@ -119,7 +121,7 @@
                 '</div>' +
                 '<div style="flex:1; min-width:140px;">' +
                     '<label style="margin-top:0;">Valor (R$)</label>' +
-                    '<input type="text" name="itens_plano-' + indice + '-valor_alocado" placeholder="0,00">' +
+                    '<input type="text" inputmode="numeric" class="campo-moeda" placeholder="0,00" name="itens_plano-' + indice + '-valor_alocado">' +
                 '</div>' +
                 '<div style="padding-top:26px;">' +
                     '<button type="button" class="btn-sm btn-sm-perigo remover-item" style="margin-top:0;">Remover</button>' +
@@ -129,8 +131,14 @@
     }
 
     document.getElementById('btn-adicionar-item').addEventListener('click', function () {
-        container.appendChild(criarLinhaItem(proximoIndice));
+        const novaLinha = criarLinhaItem(proximoIndice);
+        container.appendChild(novaLinha);
         proximoIndice += 1;
+
+        const campoValorNovo = novaLinha.querySelector('.campo-moeda');
+        campoValorNovo.addEventListener('input', function () {
+            aplicarMascaraMoeda(campoValorNovo);
+        });
     });
 
     container.addEventListener('click', function (evento) {
@@ -140,6 +148,20 @@
                 evento.target.closest('.item-plano').remove();
             } else {
                 alert('É preciso manter ao menos um item no plano de trabalho.');
+            }
+        }
+    });
+
+    // Sugestão automática de categoria ao trocar o tipo de alocação — usa
+    // delegação de evento no container, então funciona tanto nas linhas já
+    // renderizadas quanto nas criadas dinamicamente pelo botão "+ Adicionar".
+    container.addEventListener('change', function (evento) {
+        if (evento.target.name && evento.target.name.endsWith('-tipo_alocacao_id')) {
+            var linha = evento.target.closest('.item-plano');
+            var campoCategoria = linha.querySelector('select[name$="-categoria"]');
+            var sugestao = mapaCategoriaPadrao[evento.target.value];
+            if (campoCategoria && sugestao) {
+                campoCategoria.value = sugestao;
             }
         }
     });

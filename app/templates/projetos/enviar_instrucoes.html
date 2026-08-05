@@ -1,0 +1,23 @@
+{% extends "base_app.html" %}
+{% block titulo %}Instruções do projeto — SCF PROPEG{% endblock %}
+{% block conteudo %}
+<a href="{{ url_for('projetos.detalhe_projeto', projeto_id=projeto.id) }}" class="btn-link-secundario" style="margin-bottom:14px; display:inline-block; padding:6px 14px; font-size:12px;">← {{ projeto.nome }}</a>
+
+<div class="card">
+    <h2>{{ "Substituir" if projeto.arquivo_instrucoes else "Enviar" }} documento de instruções</h2>
+    <p class="link-muted">Esse documento fica visível pro pesquisador responsável e pra qualquer um com acesso ao projeto.</p>
+    {% if projeto.instrucoes_nome_original %}
+    <p class="link-muted">Arquivo atual: <a href="{{ url_for('projetos.ver_instrucoes', projeto_id=projeto.id) }}" target="_blank">{{ projeto.instrucoes_nome_original }}</a></p>
+    {% endif %}
+    <form method="POST" enctype="multipart/form-data">
+        {{ form.hidden_tag() }}
+        <label>{{ form.arquivo.label }}</label>
+        {{ form.arquivo() }}
+        {% for erro in form.arquivo.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
+        <div style="display:flex; gap:10px; align-items:center;">
+            <button type="submit">Enviar</button>
+            <a href="{{ url_for('projetos.detalhe_projeto', projeto_id=projeto.id) }}" class="btn-link-secundario" style="margin-top:18px;">Cancelar</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

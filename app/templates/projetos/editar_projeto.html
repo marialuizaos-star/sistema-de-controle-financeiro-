@@ -13,7 +13,7 @@
         {% for erro in form.nome.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
 
         <label>{{ form.valor_total.label }}</label>
-        {{ form.valor_total() }}
+        {{ form.valor_total(type="text", inputmode="numeric", class="campo-moeda", placeholder="0,00") }}
         {% for erro in form.valor_total.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
 
         <label>{{ form.vigencia_inicio.label }}</label>

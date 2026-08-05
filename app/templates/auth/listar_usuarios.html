@@ -15,6 +15,7 @@
 
 <div class="card {{ '' if abrir_cadastro else 'escondido' }}" id="painel-cadastro">
     <h2>Cadastrar Novo Usuário</h2>
+    <p class="link-muted">A senha definida aqui é provisória — o usuário será obrigado a trocá-la no primeiro acesso.</p>
     <form method="POST" action="{{ url_for('auth.cadastro') }}">
         {{ form_cadastro.hidden_tag() }}
 
@@ -33,8 +34,20 @@
 
         <div style="display:flex; gap:16px; flex-wrap:wrap;">
             <div style="flex:1; min-width:220px;">
+                <label>{{ form_cadastro.cpf.label }}</label>
+                {{ form_cadastro.cpf(placeholder="000.000.000-00") }}
+                {% for erro in form_cadastro.cpf.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
+            </div>
+            <div style="flex:1; min-width:220px;">
                 <label>{{ form_cadastro.departamento.label }}</label>
                 {{ form_cadastro.departamento(placeholder="Ex.: Centro de Ciências Biológicas") }}
+            </div>
+        </div>
+
+        <div style="display:flex; gap:16px; flex-wrap:wrap;">
+            <div style="flex:1; min-width:220px;">
+                <label>{{ form_cadastro.telefone.label }}</label>
+                {{ form_cadastro.telefone(placeholder="(68) 90000-0000") }}
             </div>
             <div style="flex:1; min-width:220px;">
                 <label>{{ form_cadastro.papel.label }}</label>
@@ -44,14 +57,7 @@
 
         <div style="display:flex; gap:16px; flex-wrap:wrap;">
             <div style="flex:1; min-width:220px;">
-                <label>{{ form_cadastro.telefone.label }}</label>
-                {{ form_cadastro.telefone(placeholder="(68) 90000-0000") }}
-            </div>
-        </div>
-
-        <div style="display:flex; gap:16px; flex-wrap:wrap;">
-            <div style="flex:1; min-width:220px;">
-                <label>{{ form_cadastro.senha.label }}</label>
+                <label>{{ form_cadastro.senha.label }} (provisória)</label>
                 {{ form_cadastro.senha() }}
                 {% for erro in form_cadastro.senha.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
             </div>
@@ -79,6 +85,7 @@
     <tr>
         <th>Usuário</th>
         <th>E-mail</th>
+        <th>CPF</th>
         <th>Departamento</th>
         <th>Projetos</th>
         <th>Último acesso</th>
@@ -94,11 +101,12 @@
                 <div class="app-avatar" style="width:32px; height:32px; font-size:12px;">{{ iniciais }}</div>
                 <div>
                     <div style="font-weight:600;">{{ usuario.nome }}</div>
-                    <div class="link-muted" style="font-size:11px;">USR-{{ "%03d"|format(usuario.id) }}</div>
+                    <div class="link-muted" style="font-size:11px;">USR-{{ "%03d"|format(usuario.id) }}{% if usuario.senha_provisoria %} · senha provisória{% endif %}</div>
                 </div>
             </div>
         </td>
         <td>{{ usuario.email }}</td>
+        <td class="mono">{{ usuario.cpf or "—" }}</td>
         <td>{{ usuario.departamento or "—" }}</td>
         <td>{{ contagem_projetos.get(usuario.id, 0) }}</td>
         <td>{{ usuario.ultimo_acesso.strftime('%d/%m/%Y') if usuario.ultimo_acesso else "—" }}</td>
@@ -128,7 +136,7 @@
         </td>
     </tr>
     {% else %}
-    <tr><td colspan="7" class="link-muted">Nenhum usuário nesta categoria.</td></tr>
+    <tr><td colspan="8" class="link-muted">Nenhum usuário nesta categoria.</td></tr>
     {% endfor %}
 </table>
 {% endmacro %}

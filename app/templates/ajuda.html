@@ -1,0 +1,28 @@
+{% extends "base_app.html" %}
+{% block titulo %}Ajuda — SCF PROPEG{% endblock %}
+{% block conteudo %}
+<h1 style="font-size:22px; margin:0 0 4px 0;">Central de Ajuda</h1>
+<p class="link-muted" style="margin:0 0 20px 0;">Orientações básicas de uso do sistema.</p>
+
+<div class="card">
+    <h2>Para pesquisadores</h2>
+    <p><strong>Solicitar um projeto novo:</strong> vá em "Projetos" → "+ Solicitar novo projeto". Preencha os dados e o plano de trabalho (o que pretende gastar, item por item) na mesma tela. O pedido é enviado direto pro administrador aprovar.</p>
+    <p><strong>Lançar uma despesa:</strong> dentro do projeto, clique em "+ Lançar Despesa". Escolha a alocação correspondente, preencha os dados e anexe o comprovante (PDF, JPG ou PNG). Alguns tipos de despesa mostram um aviso sobre documentos extras exigidos — leia com atenção antes de enviar.</p>
+    <p><strong>Enviar a prestação de contas:</strong> quando o projeto estiver com os gastos concluídos, clique em "Enviar prestação de contas" na tela do projeto. Depois disso não é mais possível lançar novas despesas até o administrador concluir a análise.</p>
+    <p><strong>Notificações:</strong> o sino no topo da tela avisa quando seu projeto, remanejamento ou prestação de contas for aprovado, reprovado, ou tiver algum problema apontado pelo administrador.</p>
+</div>
+
+<div class="card">
+    <h2>Para administradores</h2>
+    <p><strong>Pendências:</strong> o menu ☰ ao lado de "+ Novo Projeto" reúne projetos pendentes de aprovação, remanejamentos pendentes e prestações de contas pendentes.</p>
+    <p><strong>Revisar um projeto:</strong> ao abrir um projeto pendente, é possível marcar problemas em alocações específicas (com motivo) antes de aprovar ou reprovar o projeto como um todo.</p>
+    <p><strong>Revisar despesas:</strong> "Estornar" desfaz uma despesa (o valor volta pro saldo); "Reprovar" marca a despesa como inválida. As duas exigem que você explique o motivo, que o pesquisador recebe por notificação.</p>
+    <p><strong>Cadastro de usuários:</strong> em "Usuários" → "+ Novo Usuário". A senha definida ali é provisória — a pessoa será obrigada a trocá-la no primeiro acesso.</p>
+</div>
+
+<div class="card">
+    <h2>Dúvidas frequentes</h2>
+    <p><strong>Por que não consigo lançar despesa?</strong> O projeto precisa estar com status "Ativo" e sem prestação de contas em análise. Se a alocação certa ainda não existe, peça pro administrador criar (ou crie, se você tiver essa opção) antes de lançar a despesa.</p>
+    <p><strong>Diferença entre "alocado" e "gasto":</strong> alocado é o que foi planejado gastar em cada categoria; gasto é o valor real das despesas já lançadas. O saldo do projeto é sempre baseado no que foi de fato gasto.</p>
+</div>
+{% endblock %}

@@ -1,59 +1,90 @@
 {% extends "base_app.html" %}
 {% block titulo %}Despesas — SCF PROPEG{% endblock %}
 {% block conteudo %}
-<div class="card">
-    <h2>{{ alocacao.tipo_despesa.nome if alocacao.tipo_despesa else "Alocação" }}</h2>
-    <p class="link-muted">
-        Projeto: {{ alocacao.projeto.nome }} &nbsp;·&nbsp;
-        Responsável: {{ alocacao.usuario.nome }} &nbsp;·&nbsp;
-        Categoria: {{ alocacao.categoria | rotulo }}
-    </p>
-    <table>
-        <tr><td>Valor alocado</td><td style="text-align:right">R$ {{ alocacao.valor_alocado | moeda }}</td></tr>
-        <tr><td>Total gasto</td><td style="text-align:right">R$ {{ total_gasto | moeda }}</td></tr>
-        <tr><td><strong>Saldo</strong></td><td style="text-align:right"><strong>R$ {{ saldo | moeda }}</strong></td></tr>
-    </table>
+<a href="{{ url_for('projetos.detalhe_projeto', projeto_id=alocacao.projeto_id) }}" class="btn-link-secundario" style="margin-bottom:14px; display:inline-block; padding:6px 14px; font-size:12px;">← {{ alocacao.projeto.nome }}</a>
+
+<h1 style="font-size:22px; margin:0 0 4px 0;">Lançamento de Despesa</h1>
+<p class="link-muted" style="margin:0 0 20px 0;">
+    {{ alocacao.tipo_alocacao.nome if alocacao.tipo_alocacao else "Alocação" }} — {{ alocacao.usuario.nome }} ({{ alocacao.categoria | rotulo }})
+</p>
+
+{% if aviso_documentos %}
+<div class="flash" style="background: var(--warning-soft); color: var(--warning); margin-bottom:0;">⚠️ {{ aviso_documentos }}</div>
+{% endif %}
+
+<div class="stat-grid">
+    <div class="stat-card">
+        <div class="stat-label">Valor alocado</div>
+        <div class="stat-value">R$ {{ alocacao.valor_alocado | moeda }}</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Total gasto</div>
+        <div class="stat-value">R$ {{ total_gasto | moeda }}</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Saldo desta alocação</div>
+        <div class="stat-value">R$ {{ saldo | moeda }}</div>
+    </div>
 </div>
 
 <div class="card">
-    <h2>Adicionar comprovante</h2>
+    <h2>Dados da Despesa</h2>
     <form method="POST" enctype="multipart/form-data">
         {{ form.hidden_tag() }}
         {{ form.alocacao_id(style="display:none") }}
 
-        <label>{{ form.data.label }}</label>
-        {{ form.data() }}
-        {% for erro in form.data.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
-
-        <label>{{ form.natureza.label }}</label>
-        {{ form.natureza() }}
-        {% for erro in form.natureza.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
-
-        <label>{{ form.valor.label }}</label>
-        {{ form.valor() }}
-        {% for erro in form.valor.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
+        <div style="display:flex; gap:16px; flex-wrap:wrap;">
+            <div style="flex:1; min-width:200px;">
+                <label>{{ form.data.label }}</label>
+                {{ form.data() }}
+                {% for erro in form.data.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
+            </div>
+            <div style="flex:1; min-width:200px;">
+                <label>{{ form.natureza.label }}</label>
+                {{ form.natureza() }}
+                {% for erro in form.natureza.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
+            </div>
+        </div>
 
         <label>{{ form.fornecedor.label }}</label>
-        {{ form.fornecedor() }}
+        {{ form.fornecedor(placeholder="Ex.: Nome do favorecido") }}
         {% for erro in form.fornecedor.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
 
-        <label>{{ form.cnpj_favorecido.label }}</label>
-        {{ form.cnpj_favorecido(placeholder="00.000.000/0000-00") }}
-        {% for erro in form.cnpj_favorecido.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
+        <div style="display:flex; gap:16px; flex-wrap:wrap;">
+            <div style="flex:1; min-width:200px;">
+                <label>{{ form.cnpj_favorecido.label }}</label>
+                {{ form.cnpj_favorecido(placeholder="00.000.000/0000-00") }}
+                {% for erro in form.cnpj_favorecido.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
+            </div>
+            <div style="flex:1; min-width:200px;">
+                <label>{{ form.valor.label }}</label>
+                {{ form.valor(type="text", inputmode="numeric", class="campo-moeda", placeholder="0,00") }}
+                {% for erro in form.valor.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
+            </div>
+        </div>
 
         <label>{{ form.numero_comprovante_fiscal.label }}</label>
         {{ form.numero_comprovante_fiscal(placeholder="Ex: NF 000123") }}
         {% for erro in form.numero_comprovante_fiscal.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
 
-        <label>{{ form.descricao.label }}</label>
-        {{ form.descricao() }}
-        {% for erro in form.descricao.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
-
-        <label>{{ form.comprovante.label }}</label>
-        {{ form.comprovante() }}
+        <label>Comprovante (PDF ou imagem) *</label>
+        <div class="upload-area" onclick="document.getElementById('campo-comprovante').click()">
+            <span style="font-size:20px;">📎</span>
+            <div><strong>Clique para selecionar o comprovante</strong></div>
+            <div class="link-muted" style="font-size:12px;">PDF, JPG ou PNG</div>
+            <div class="link-muted" id="nome-arquivo-selecionado" style="font-size:12px; margin-top:6px;"></div>
+        </div>
+        {{ form.comprovante(id="campo-comprovante", style="display:none", onchange="atualizarNomeArquivo(this)") }}
         {% for erro in form.comprovante.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
 
-        <button type="submit">Adicionar comprovante</button>
+        <label>{{ form.descricao.label }}</label>
+        {{ form.descricao(placeholder="Informações adicionais sobre esta despesa...") }}
+        {% for erro in form.descricao.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
+
+        <div style="display:flex; gap:10px; align-items:center;">
+            <button type="submit">Lançar Despesa</button>
+            <a href="{{ url_for('projetos.detalhe_projeto', projeto_id=alocacao.projeto_id) }}" class="btn-link-secundario" style="margin-top:18px;">Cancelar</a>
+        </div>
     </form>
 </div>
 
@@ -61,30 +92,25 @@
     <h2>Despesas lançadas</h2>
     <table>
         <tr>
-            <th>Data</th>
-            <th>Natureza</th>
-            <th>Favorecido</th>
-            <th>Comprovante fiscal</th>
-            <th>Valor</th>
-            <th>Status</th>
-            <th style="text-align:right">Ações</th>
+            <th>Data</th><th>Natureza</th><th>Favorecido</th><th>Comprovante fiscal</th><th>Valor</th><th>Status</th><th style="text-align:right">Ações</th>
         </tr>
         {% for despesa in despesas %}
-        <tr>
-            <td>{{ despesa.data.strftime('%d/%m/%Y') }}</td>
+        {% set cor_despesa = {"lancada": "verde", "estornada": "cinza", "reprovada": "vermelho"}.get(despesa.status, "cinza") %}
+        <tr class="linha-clicavel" data-href="{{ url_for('despesas.ver_comprovante', despesa_id=despesa.id) }}">
+            <td class="mono">{{ despesa.data.strftime('%d/%m/%Y') }}</td>
             <td>{{ despesa.natureza | rotulo }}</td>
             <td>{{ despesa.fornecedor }}{% if despesa.cnpj_favorecido %} <span class="link-muted">({{ despesa.cnpj_favorecido }})</span>{% endif %}</td>
             <td>{{ despesa.numero_comprovante_fiscal or "—" }}</td>
-            <td>R$ {{ despesa.valor | moeda }}</td>
-            <td>{{ despesa.status | rotulo }}</td>
-            <td style="text-align:right">
-                <a href="{{ url_for('despesas.ver_comprovante', despesa_id=despesa.id) }}" target="_blank">+ Comprovante</a>
+            <td class="mono">R$ {{ despesa.valor | moeda }}</td>
+            <td>
+                <span class="badge badge-{{ cor_despesa }}"><span class="badge-dot"></span>{{ despesa.status | rotulo }}</span>
+                {% if despesa.motivo_status %}<div class="link-muted" style="font-size:11px; margin-top:3px;">{{ despesa.motivo_status }}</div>{% endif %}
+            </td>
+            <td style="text-align:right" class="impede-clique-linha">
+                <a href="{{ url_for('despesas.ver_comprovante', despesa_id=despesa.id) }}" target="_blank" class="btn-sm">📎 Ver</a>
                 {% if current_user.papel == "administrador" and despesa.status == "lancada" %}
-                &nbsp;·&nbsp;
-                <form method="POST" action="{{ url_for('despesas.estornar_despesa', despesa_id=despesa.id) }}" style="display:inline"
-                      onsubmit="return confirm('Estornar esta despesa? O valor volta pro saldo da alocação.');">
-                    <button type="submit" class="btn-link-perigo" style="margin-top:0;">Estornar</button>
-                </form>
+                <a href="{{ url_for('despesas.estornar_despesa', despesa_id=despesa.id) }}" class="btn-sm btn-sm-perigo">Estornar</a>
+                <a href="{{ url_for('despesas.reprovar_despesa', despesa_id=despesa.id) }}" class="btn-sm btn-sm-perigo">Reprovar</a>
                 {% endif %}
             </td>
         </tr>
@@ -94,5 +120,10 @@
     </table>
 </div>
 
-<p><a href="{{ url_for('projetos.detalhe_projeto', projeto_id=alocacao.projeto_id) }}">Voltar para o projeto</a></p>
+<script>
+    function atualizarNomeArquivo(input) {
+        var texto = document.getElementById('nome-arquivo-selecionado');
+        texto.textContent = input.files.length ? input.files[0].name : '';
+    }
+</script>
 {% endblock %}

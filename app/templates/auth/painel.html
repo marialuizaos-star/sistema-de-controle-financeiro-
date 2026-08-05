@@ -10,6 +10,37 @@
     {% endif %}
 </p>
 
+{% if projetos_vencendo %}
+<div class="card" style="border-left: 4px solid var(--warning); background: var(--warning-soft);">
+    <h2 style="color: var(--warning);">⚠️ Vigência terminando em breve</h2>
+    <table>
+        <tr>
+            <th>Projeto</th>
+            <th>Fim da vigência</th>
+            <th>Dias restantes</th>
+            <th style="text-align:right">Ações</th>
+        </tr>
+        {% for projeto in projetos_vencendo %}
+        {% set dias_restantes = (projeto.vigencia_fim - hoje).days %}
+        <tr class="linha-clicavel" data-href="{{ url_for('projetos.detalhe_projeto', projeto_id=projeto.id) }}">
+            <td>{{ projeto.nome }}</td>
+            <td class="mono">{{ projeto.vigencia_fim.strftime('%d/%m/%Y') }}</td>
+            <td>
+                {% if dias_restantes == 0 %}
+                <span class="badge badge-vermelho"><span class="badge-dot"></span>Termina hoje</span>
+                {% else %}
+                <span class="badge badge-laranja"><span class="badge-dot"></span>{{ dias_restantes }} dia{{ "s" if dias_restantes != 1 else "" }}</span>
+                {% endif %}
+            </td>
+            <td style="text-align:right" class="impede-clique-linha">
+                <a href="{{ url_for('projetos.detalhe_projeto', projeto_id=projeto.id) }}" class="btn-sm">Ver</a>
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+</div>
+{% endif %}
+
 {% if painel_geral %}
 <div class="stat-grid">
     <div class="stat-card">

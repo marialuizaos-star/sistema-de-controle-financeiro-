@@ -2,15 +2,20 @@
 {% block titulo %}{{ projeto.nome }} — SCF PROPEG{% endblock %}
 {% block conteudo %}
 {% set cor_status = {"ativo": "verde", "pendente_aprovacao": "laranja", "reprovado": "vermelho", "inativo": "cinza", "encerrado": "cinza"}.get(projeto.status, "cinza") %}
+{% set pode_enviar_prestacao = projeto.criado_por_id and current_user.id == projeto.criado_por_id %}
 
 <a href="{{ url_for('projetos.listar_projetos') }}" class="btn-link-secundario" style="margin-bottom:14px; display:inline-block; padding:6px 14px; font-size:12px;">← Projetos</a>
 
 <div class="card">
     <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:14px;">
         <div>
-            <div style="display:flex; gap:8px; align-items:center; margin-bottom:10px;">
+            <div style="display:flex; gap:8px; align-items:center; margin-bottom:10px; flex-wrap:wrap;">
                 <span class="badge badge-indigo mono">{{ codigo_projeto }}</span>
                 <span class="badge badge-{{ cor_status }}"><span class="badge-dot"></span>{{ projeto.status | rotulo }}</span>
+                {% if projeto.status_prestacao_contas %}
+                {% set cor_prestacao = {"em_analise": "laranja", "aceita": "verde", "reprovada": "vermelho"}.get(projeto.status_prestacao_contas, "cinza") %}
+                <span class="badge badge-{{ cor_prestacao }}"><span class="badge-dot"></span>Prestação: {{ projeto.status_prestacao_contas | rotulo }}</span>
+                {% endif %}
             </div>
             <h1 style="font-size:22px; margin:0 0 12px 0;">{{ projeto.nome }}</h1>
             <div style="display:flex; gap:32px; flex-wrap:wrap;">
@@ -26,8 +31,23 @@
                 </div>
             </div>
         </div>
-        {% if projeto.status == "ativo" %}
+        {% if projeto.status == "ativo" and projeto.status_prestacao_contas != "em_analise" %}
         <a href="{{ url_for('despesas.nova_despesa_projeto', projeto_id=projeto.id) }}" class="btn-link-primario">+ Lançar Despesa</a>
+        {% endif %}
+    </div>
+
+    <div style="margin-top:16px; padding-top:14px; border-top:1px solid var(--border); display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+        {% if projeto.arquivo_instrucoes %}
+        <a href="{{ url_for('projetos.ver_instrucoes', projeto_id=projeto.id) }}" target="_blank" class="btn-sm">📄 {{ projeto.instrucoes_nome_original }}</a>
+        {% if current_user.papel == "administrador" %}
+        <a href="{{ url_for('projetos.enviar_instrucoes', projeto_id=projeto.id) }}" class="btn-sm btn-sm-cinza">Substituir instruções</a>
+        {% endif %}
+        {% else %}
+        {% if current_user.papel == "administrador" %}
+        <a href="{{ url_for('projetos.enviar_instrucoes', projeto_id=projeto.id) }}" class="btn-sm btn-sm-cinza">📄 Enviar documento de instruções</a>
+        {% else %}
+        <span class="link-muted" style="font-size:12px;">Nenhum documento de instruções enviado ainda.</span>
+        {% endif %}
         {% endif %}
     </div>
 
@@ -47,6 +67,39 @@
         <p class="flash erro" style="margin-top:16px;">
             Este projeto foi reprovado{% if projeto.motivo_reprovacao %}: {{ projeto.motivo_reprovacao }}{% else %}.{% endif %}
         </p>
+    {% elif projeto.status == "ativo" %}
+        {% if projeto.status_prestacao_contas == "em_analise" %}
+            {% if current_user.papel == "administrador" %}
+            <div style="display:flex; gap:10px; margin-top:16px;">
+                <form method="POST" action="{{ url_for('prestacoes.aprovar', projeto_id=projeto.id) }}"
+                      onsubmit="return confirm('Aceitar esta prestação de contas? O projeto será encerrado.');">
+                    <button type="submit" class="sucesso">Aceitar prestação de contas</button>
+                </form>
+                <a href="{{ url_for('prestacoes.reprovar', projeto_id=projeto.id) }}" class="btn-link-primario-perigo">Reprovar prestação de contas</a>
+            </div>
+            {% else %}
+            <p class="flash sucesso" style="margin-top:16px;">Prestação de contas enviada e aguardando análise do administrador.</p>
+            {% endif %}
+        {% elif projeto.status_prestacao_contas == "reprovada" %}
+            <p class="flash erro" style="margin-top:16px;">
+                Prestação de contas reprovada{% if projeto.motivo_reprovacao_prestacao %}: {{ projeto.motivo_reprovacao_prestacao }}{% else %}.{% endif %}
+            </p>
+            {% if pode_enviar_prestacao %}
+            <form method="POST" action="{{ url_for('prestacoes.enviar', projeto_id=projeto.id) }}" style="margin-top:8px;"
+                  onsubmit="return confirm('Reenviar a prestação de contas para análise do administrador?');">
+                <button type="submit" class="btn-sm">Reenviar prestação de contas</button>
+            </form>
+            {% endif %}
+        {% elif pode_enviar_prestacao %}
+            <div style="margin-top:16px;">
+                <form method="POST" action="{{ url_for('prestacoes.enviar', projeto_id=projeto.id) }}"
+                      onsubmit="return confirm('Enviar a prestação de contas para análise do administrador?');">
+                    <button type="submit">Enviar prestação de contas</button>
+                </form>
+            </div>
+        {% endif %}
+    {% elif projeto.status == "encerrado" and projeto.status_prestacao_contas == "aceita" %}
+        <p class="flash sucesso" style="margin-top:16px;">✅ Prestação de contas aceita. Projeto encerrado.</p>
     {% endif %}
 
     {% if current_user.papel == "administrador" %}
@@ -96,9 +149,9 @@
     </div>
 
     {% if grafico_labels %}
-    <div class="card" style="flex:1; min-width:240px; max-width:280px; margin-bottom:0;">
+    <div class="card" style="flex:1; min-width:300px; max-width:360px; margin-bottom:0;">
         <div class="stat-label" style="margin-bottom:16px;">Despesas por tipo</div>
-        <div style="width:180px; height:180px; margin:0 auto;">
+        <div style="width:100%; height:230px;">
             <canvas id="graficoAlocacoes"></canvas>
         </div>
     </div>
@@ -129,12 +182,27 @@
         <tr {% if current_user.papel == "administrador" %}class="linha-clicavel" data-href="{{ url_for('alocacoes.editar_alocacao', alocacao_id=alocacao.id) }}"{% endif %}>
             <td>{{ alocacao.usuario.nome }}</td>
             <td>{{ (alocacao.papel_projeto | rotulo) if alocacao.papel_projeto else "—" }}</td>
-            <td>{{ alocacao.tipo_alocacao.nome if alocacao.tipo_alocacao else "—" }}</td>
+            <td>
+                {{ alocacao.tipo_alocacao.nome if alocacao.tipo_alocacao else "—" }}
+                {% if alocacao.motivo_reprovacao %}
+                <div style="margin-top:4px;"><span class="badge badge-vermelho"><span class="badge-dot"></span>Problema apontado</span></div>
+                <div class="link-muted" style="font-size:11px; margin-top:2px;">{{ alocacao.motivo_reprovacao }}</div>
+                {% endif %}
+            </td>
             <td>{{ alocacao.categoria | rotulo }}</td>
             <td class="mono">R$ {{ alocacao.valor_alocado | moeda }}</td>
             <td style="text-align:right" class="impede-clique-linha">
                 {% if current_user.papel == "administrador" %}
                 <a href="{{ url_for('alocacoes.editar_alocacao', alocacao_id=alocacao.id) }}" class="btn-sm">Editar</a>
+                {% if projeto.status == "pendente_aprovacao" %}
+                    {% if alocacao.motivo_reprovacao %}
+                    <form method="POST" action="{{ url_for('alocacoes.remover_marcacao', alocacao_id=alocacao.id) }}" style="display:inline">
+                        <button type="submit" class="btn-sm btn-sm-cinza">Remover marcação</button>
+                    </form>
+                    {% else %}
+                    <a href="{{ url_for('alocacoes.marcar_problema', alocacao_id=alocacao.id) }}" class="btn-sm btn-sm-perigo">Marcar problema</a>
+                    {% endif %}
+                {% endif %}
                 {% endif %}
             </td>
         </tr>
@@ -147,12 +215,14 @@
 <div class="card">
     <div style="display:flex; justify-content:space-between; align-items:center;">
         <h2 style="margin:0;">Despesas Lançadas</h2>
-        {% if projeto.status == "ativo" %}
+        {% if projeto.status == "ativo" and projeto.status_prestacao_contas != "em_analise" %}
         <a href="{{ url_for('despesas.nova_despesa_projeto', projeto_id=projeto.id) }}" class="btn-link-primario">+ Lançar Despesa</a>
         {% endif %}
     </div>
     {% if projeto.status in ("pendente_aprovacao", "reprovado") %}
     <p class="link-muted" style="margin-top:14px;">O lançamento de despesas fica disponível depois que o projeto for aprovado pelo administrador.</p>
+    {% elif projeto.status_prestacao_contas == "em_analise" %}
+    <p class="link-muted" style="margin-top:14px;">O lançamento de despesas fica bloqueado enquanto a prestação de contas está em análise.</p>
     {% endif %}
     <table style="margin-top:14px;">
         <tr>
@@ -167,6 +237,7 @@
             <th style="text-align:right">Ações</th>
         </tr>
         {% for despesa in despesas %}
+        {% set cor_despesa = {"lancada": "verde", "estornada": "cinza", "reprovada": "vermelho"}.get(despesa.status, "cinza") %}
         <tr class="linha-clicavel" data-href="{{ url_for('despesas.ver_comprovante', despesa_id=despesa.id) }}">
             <td class="mono">{{ despesa.data.strftime('%d/%m/%Y') }}</td>
             <td>{{ despesa.descricao or "—" }}</td>
@@ -179,18 +250,13 @@
             <td><a href="{{ url_for('despesas.ver_comprovante', despesa_id=despesa.id) }}" target="_blank" class="btn-sm impede-clique-linha">📎 Ver</a></td>
             <td class="mono">R$ {{ despesa.valor | moeda }}</td>
             <td>
-                {% if despesa.status == "lancada" %}
-                <span class="badge badge-verde"><span class="badge-dot"></span>Lançada</span>
-                {% else %}
-                <span class="badge badge-cinza"><span class="badge-dot"></span>Estornada</span>
-                {% endif %}
+                <span class="badge badge-{{ cor_despesa }}"><span class="badge-dot"></span>{{ despesa.status | rotulo }}</span>
+                {% if despesa.motivo_status %}<div class="link-muted" style="font-size:11px; margin-top:3px;">{{ despesa.motivo_status }}</div>{% endif %}
             </td>
             <td style="text-align:right" class="impede-clique-linha">
                 {% if current_user.papel == "administrador" and despesa.status == "lancada" %}
-                <form method="POST" action="{{ url_for('despesas.estornar_despesa', despesa_id=despesa.id) }}" style="display:inline"
-                      onsubmit="return confirm('Estornar esta despesa? O valor volta pro saldo da alocação.');">
-                    <button type="submit" class="btn-sm btn-sm-perigo" style="margin-top:0;">Estornar</button>
-                </form>
+                <a href="{{ url_for('despesas.estornar_despesa', despesa_id=despesa.id) }}" class="btn-sm btn-sm-perigo">Estornar</a>
+                <a href="{{ url_for('despesas.reprovar_despesa', despesa_id=despesa.id) }}" class="btn-sm btn-sm-perigo">Reprovar</a>
                 {% endif %}
             </td>
         </tr>
@@ -217,16 +283,11 @@
         type: 'doughnut',
         data: {
             labels: dados.labels,
-            datasets: [{
-                data: dados.valores,
-                backgroundColor: ['#4F46E5', '#16A34A', '#D97706', '#0EA5E9', '#DC2626', '#8B5CF6', '#059669', '#AF1C75'],
-                borderWidth: 0,
-            }]
+            datasets: [{ data: dados.valores, backgroundColor: ['#4F46E5', '#16A34A', '#D97706', '#0EA5E9', '#DC2626', '#8B5CF6', '#059669', '#AF1C75'], borderWidth: 0 }]
         },
         options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } } }
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { position: 'bottom', align: 'center', labels: { font: { size: 11 }, boxWidth: 12, boxHeight: 12, padding: 10, usePointStyle: false } } }
         }
     });
 </script>

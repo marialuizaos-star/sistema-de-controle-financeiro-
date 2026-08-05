@@ -1,0 +1,46 @@
+{% extends "base_app.html" %}
+{% block titulo %}Notificações — SCF PROPEG{% endblock %}
+{% block conteudo %}
+<a href="{{ url_for('auth.painel') }}" class="btn-link-secundario" style="margin-bottom:14px; display:inline-block; padding:6px 14px; font-size:12px;">← Início</a>
+
+<div class="card">
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+        <h2 style="margin:0;">Notificações</h2>
+        {% if total_notificacoes_nao_lidas > 0 %}
+        <form method="POST" action="{{ url_for('notificacoes.marcar_todas_lidas') }}">
+            <button type="submit" class="btn-sm">Marcar todas como lidas</button>
+        </form>
+        {% endif %}
+    </div>
+    <table style="margin-top:14px;">
+        <tr>
+            <th>Mensagem</th>
+            <th>Data</th>
+            <th>Status</th>
+            <th style="text-align:right">Ações</th>
+        </tr>
+        {% for notificacao in notificacoes %}
+        <tr {% if notificacao.link %}class="linha-clicavel" data-href="{{ url_for('notificacoes.abrir', notificacao_id=notificacao.id) }}"{% endif %}>
+            <td>{{ notificacao.mensagem }}</td>
+            <td class="mono">{{ notificacao.criado_em.strftime('%d/%m/%Y %H:%M') }}</td>
+            <td>
+                {% if notificacao.lida %}
+                <span class="badge badge-cinza"><span class="badge-dot"></span>Lida</span>
+                {% else %}
+                <span class="badge badge-indigo"><span class="badge-dot"></span>Nova</span>
+                {% endif %}
+            </td>
+            <td style="text-align:right" class="impede-clique-linha">
+                {% if not notificacao.lida %}
+                <form method="POST" action="{{ url_for('notificacoes.marcar_lida', notificacao_id=notificacao.id) }}" style="display:inline">
+                    <button type="submit" class="btn-sm">Marcar como lida</button>
+                </form>
+                {% endif %}
+            </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4" class="link-muted">Nenhuma notificação ainda.</td></tr>
+        {% endfor %}
+    </table>
+</div>
+{% endblock %}
