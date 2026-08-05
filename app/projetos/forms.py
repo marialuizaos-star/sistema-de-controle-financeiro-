@@ -1,5 +1,6 @@
 from flask_wtf import FlaskForm
 from wtforms import StringField, DecimalField, DateField, SelectField, TextAreaField, FieldList, FormField
+from flask_wtf.file import FileField, FileAllowed, FileRequired
 from wtforms.validators import DataRequired, NumberRange, ValidationError, Optional, Length
 
 STATUS_PROJETO = [
@@ -23,8 +24,6 @@ PAPEIS_PROJETO = [
 
 
 class ProjetoForm(FlaskForm):
-    """Usado pelo administrador para cadastrar/editar projeto diretamente
-    (RF07/RF08) — já nasce com status definido pelo próprio admin."""
     nome = StringField("Nome do projeto", validators=[DataRequired()])
     valor_total = DecimalField(
         "Valor total (R$)", validators=[DataRequired(), NumberRange(min=0)], places=2
@@ -39,9 +38,6 @@ class ProjetoForm(FlaskForm):
 
 
 class ItemPlanoTrabalhoForm(FlaskForm):
-    """Sub-formulário de um item do plano de trabalho (uma alocação), usado
-    dentro do FieldList de SolicitarProjetoForm. CSRF desabilitado aqui porque
-    o token já é validado uma vez, no formulário principal."""
     class Meta:
         csrf = False
 
@@ -52,9 +48,6 @@ class ItemPlanoTrabalhoForm(FlaskForm):
 
 
 class SolicitarProjetoForm(FlaskForm):
-    """Tela única de solicitação de projeto pelo usuário externo (novo RF):
-    dados do projeto e o plano de trabalho (itens de alocação) são enviados
-    juntos, numa só solicitação, para aprovação do administrador."""
     nome = StringField("Nome do projeto", validators=[DataRequired()])
     valor_total = DecimalField(
         "Valor total (R$)", validators=[DataRequired(), NumberRange(min=0)], places=2
@@ -80,7 +73,17 @@ class SolicitarProjetoForm(FlaskForm):
 
 
 class ReprovarProjetoForm(FlaskForm):
-    """Usado pelo administrador ao reprovar a solicitação de um projeto."""
     motivo_reprovacao = TextAreaField(
         "Motivo da reprovação (opcional)", validators=[Optional(), Length(max=1000)]
+    )
+
+
+class EnviarInstrucoesForm(FlaskForm):
+    """Upload do documento de instruções do projeto, feito pelo administrador."""
+    arquivo = FileField(
+        "Documento de instruções (PDF, DOC ou DOCX)",
+        validators=[
+            FileRequired(message="Selecione um arquivo."),
+            FileAllowed(["pdf", "doc", "docx"], "Envie um arquivo PDF, DOC ou DOCX."),
+        ],
     )

@@ -18,13 +18,23 @@ ROTULOS = {
     "ativo": "Ativo", "inativo": "Inativo", "encerrado": "Encerrado",
     "pendente_aprovacao": "Pendente de aprovação", "reprovado": "Reprovado",
     "custeio": "Custeio", "capital": "Capital", "devolucao": "Devolução",
-    "lancada": "Lançada", "estornada": "Estornada",
+    "lancada": "Lançada", "estornada": "Estornada", "reprovada": "Reprovada",
 }
 
 
 def _moeda(valor):
     texto = f"{valor:,.2f}"
     return "R$ " + texto.replace(",", "X").replace(".", ",").replace("X", ".")
+
+
+def _responsavel_do_projeto(projeto, alocacoes):
+    """Pra exibir no cabeçalho do PDF: prioriza quem solicitou o cadastro do
+    projeto; se não houver (projeto cadastrado direto pelo admin), tenta achar
+    quem tem o papel de Coordenador numa alocação; senão retorna None."""
+    if projeto.criado_por:
+        return projeto.criado_por
+    coordenador = next((a for a in alocacoes if a.papel_projeto == "coordenador"), None)
+    return coordenador.usuario if coordenador else None
 
 
 @relatorios_bp.route("/projetos/<int:projeto_id>/relatorio")
@@ -49,6 +59,8 @@ def relatorio_projeto(projeto_id):
     total_despesas = sum((d.valor for d in despesas if d.status == "lancada"), 0)
     saldo_disponivel = projeto.valor_total - total_despesas
 
+    responsavel = _responsavel_do_projeto(projeto, alocacoes)
+
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=A4, topMargin=2 * cm, bottomMargin=2 * cm)
     styles = getSampleStyleSheet()
@@ -65,6 +77,8 @@ def relatorio_projeto(projeto_id):
         ["Nome", projeto.nome],
         ["Vigência", f"{projeto.vigencia_inicio.strftime('%d/%m/%Y')} a {projeto.vigencia_fim.strftime('%d/%m/%Y')}"],
         ["Status", ROTULOS.get(projeto.status, projeto.status)],
+        ["Responsável", responsavel.nome if responsavel else "—"],
+        ["CPF do responsável", (responsavel.cpf or "—") if responsavel else "—"],
     ]
     t = Table(dados_projeto, colWidths=[4 * cm, 12 * cm])
     t.setStyle(TableStyle([

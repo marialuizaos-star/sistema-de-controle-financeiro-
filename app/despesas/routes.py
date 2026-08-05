@@ -8,18 +8,25 @@ from werkzeug.utils import secure_filename
 
 from app.extensions import db
 from app.models import Alocacao, Despesa, Comprovante, Projeto
-from app.despesas.forms import DespesaForm
+from app.despesas.forms import DespesaForm, EstornarDespesaForm, ReprovarDespesaForm
+from app.notificacoes.servicos import notificar_usuario
 
 despesas_bp = Blueprint("despesas", __name__, template_folder="../templates/despesas")
 
-ROTULOS_CATEGORIA = {
-    "custeio": "Custeio",
-    "capital": "Capital",
-}
+ROTULOS_CATEGORIA = {"custeio": "Custeio", "capital": "Capital"}
+
+
+def _formatar_moeda(valor):
+    texto = f"{valor:,.2f}"
+    return texto.replace(",", "X").replace(".", ",").replace("X", ".")
 
 
 def _pode_lancar(alocacao):
     return current_user.papel == "administrador" or current_user.id == alocacao.usuario_id
+
+
+def _pode_ver_despesa(despesa):
+    return current_user.papel == "administrador" or current_user.id == despesa.alocacao.usuario_id
 
 
 def _saldo_alocacao(alocacao, despesa_atual_id=None):
@@ -45,16 +52,27 @@ def _rotulo_alocacao(alocacao, incluir_usuario=False):
     categoria = ROTULOS_CATEGORIA.get(alocacao.categoria, alocacao.categoria)
     saldo = _saldo_alocacao(alocacao)
     prefixo = f"{alocacao.usuario.nome} — " if incluir_usuario else ""
-    return f"{prefixo}{tipo} ({categoria}) — saldo R$ {saldo:.2f}"
+    return f"{prefixo}{tipo} ({categoria}) — saldo R$ {_formatar_moeda(saldo)}"
+
+
+def _mapa_documentos_obrigatorios(alocacoes):
+    """{alocacao_id: texto} só pras alocações que têm aviso configurado."""
+    return {
+        a.id: a.tipo_alocacao.documentos_obrigatorios
+        for a in alocacoes
+        if a.tipo_alocacao and a.tipo_alocacao.documentos_obrigatorios
+    }
 
 
 def _projeto_permite_despesa(projeto):
     return projeto.status == "ativo"
 
 
+def _data_dentro_da_vigencia(data, projeto):
+    return projeto.vigencia_inicio <= data <= projeto.vigencia_fim
+
+
 def _despesas_do_projeto(projeto):
-    """Despesas visíveis ao usuário atual no contexto deste projeto: todas,
-    se administrador; só as das próprias alocações, se usuário externo."""
     query = Despesa.query.join(Alocacao).filter(Alocacao.projeto_id == projeto.id).order_by(Despesa.data.desc())
     if current_user.papel != "administrador":
         query = query.filter(Alocacao.usuario_id == current_user.id)
@@ -70,21 +88,15 @@ def _salvar_despesa(form, alocacao):
     arquivo.save(os.path.join(pasta, nome_arquivo))
 
     despesa = Despesa(
-        alocacao_id=alocacao.id,
-        data=form.data.data,
-        valor=form.valor.data,
-        natureza=form.natureza.data,
-        fornecedor=form.fornecedor.data,
+        alocacao_id=alocacao.id, data=form.data.data, valor=form.valor.data,
+        natureza=form.natureza.data, fornecedor=form.fornecedor.data,
         cnpj_favorecido=form.cnpj_favorecido.data,
         numero_comprovante_fiscal=form.numero_comprovante_fiscal.data,
-        descricao=form.descricao.data,
-        status="lancada",
+        descricao=form.descricao.data, status="lancada",
     )
     db.session.add(despesa)
     db.session.flush()
-
-    comprovante = Comprovante(despesa_id=despesa.id, arquivo=nome_arquivo)
-    db.session.add(comprovante)
+    db.session.add(Comprovante(despesa_id=despesa.id, arquivo=nome_arquivo))
     db.session.commit()
     return despesa
 
@@ -96,13 +108,14 @@ def nova_despesa(alocacao_id):
     if alocacao is None:
         flash("Alocação não encontrada.", "erro")
         return redirect(url_for("projetos.listar_projetos"))
-
     if not _pode_lancar(alocacao):
         flash("Você não tem permissão para lançar despesas nesta alocação.", "erro")
         return redirect(url_for("projetos.detalhe_projeto", projeto_id=alocacao.projeto_id))
-
     if not _projeto_permite_despesa(alocacao.projeto):
         flash("Este projeto ainda não foi aprovado pelo administrador. Não é possível lançar despesas.", "erro")
+        return redirect(url_for("projetos.detalhe_projeto", projeto_id=alocacao.projeto_id))
+    if alocacao.projeto.status_prestacao_contas == "em_analise":
+        flash("A prestação de contas deste projeto está em análise. Não é possível lançar despesas até que seja concluída.", "erro")
         return redirect(url_for("projetos.detalhe_projeto", projeto_id=alocacao.projeto_id))
 
     form = DespesaForm()
@@ -114,23 +127,20 @@ def nova_despesa(alocacao_id):
     despesas = Despesa.query.filter_by(alocacao_id=alocacao.id).order_by(Despesa.data.desc()).all()
     saldo = _saldo_alocacao(alocacao)
     total_gasto = alocacao.valor_alocado - saldo
+    aviso_documentos = alocacao.tipo_alocacao.documentos_obrigatorios if alocacao.tipo_alocacao else None
 
     if form.validate_on_submit():
+        if not _data_dentro_da_vigencia(form.data.data, alocacao.projeto):
+            flash(f"A data da despesa precisa estar dentro da vigência do projeto ({alocacao.projeto.vigencia_inicio.strftime('%d/%m/%Y')} a {alocacao.projeto.vigencia_fim.strftime('%d/%m/%Y')}).", "erro")
+            return render_template("despesas/nova_despesa.html", form=form, alocacao=alocacao, despesas=despesas, saldo=saldo, total_gasto=total_gasto, aviso_documentos=aviso_documentos)
         if form.valor.data > saldo:
-            flash(f"Valor acima do saldo disponível desta alocação (R$ {saldo:.2f} restantes).", "erro")
-            return render_template(
-                "despesas/nova_despesa.html", form=form, alocacao=alocacao,
-                despesas=despesas, saldo=saldo, total_gasto=total_gasto,
-            )
-
+            flash(f"Valor acima do saldo disponível desta alocação (R$ {_formatar_moeda(saldo)} restantes).", "erro")
+            return render_template("despesas/nova_despesa.html", form=form, alocacao=alocacao, despesas=despesas, saldo=saldo, total_gasto=total_gasto, aviso_documentos=aviso_documentos)
         _salvar_despesa(form, alocacao)
         flash("Despesa lançada com sucesso.", "sucesso")
         return redirect(url_for("despesas.nova_despesa", alocacao_id=alocacao.id))
 
-    return render_template(
-        "despesas/nova_despesa.html", form=form, alocacao=alocacao,
-        despesas=despesas, saldo=saldo, total_gasto=total_gasto,
-    )
+    return render_template("despesas/nova_despesa.html", form=form, alocacao=alocacao, despesas=despesas, saldo=saldo, total_gasto=total_gasto, aviso_documentos=aviso_documentos)
 
 
 @despesas_bp.route("/projetos/<int:projeto_id>/despesas/nova", methods=["GET", "POST"])
@@ -140,9 +150,11 @@ def nova_despesa_projeto(projeto_id):
     if projeto is None:
         flash("Projeto não encontrado.", "erro")
         return redirect(url_for("projetos.listar_projetos"))
-
     if not _projeto_permite_despesa(projeto):
         flash("Este projeto ainda não foi aprovado pelo administrador. Não é possível lançar despesas.", "erro")
+        return redirect(url_for("projetos.detalhe_projeto", projeto_id=projeto.id))
+    if projeto.status_prestacao_contas == "em_analise":
+        flash("A prestação de contas deste projeto está em análise. Não é possível lançar despesas até que seja concluída.", "erro")
         return redirect(url_for("projetos.detalhe_projeto", projeto_id=projeto.id))
 
     query_alocacoes = Alocacao.query.filter_by(projeto_id=projeto.id)
@@ -156,35 +168,28 @@ def nova_despesa_projeto(projeto_id):
 
     saldo_projeto = _saldo_disponivel_projeto(projeto)
     despesas = _despesas_do_projeto(projeto)
+    mapa_documentos = _mapa_documentos_obrigatorios(alocacoes_disponiveis)
 
     form = DespesaForm()
-    form.alocacao_id.choices = [
-        (a.id, _rotulo_alocacao(a, incluir_usuario=(current_user.papel == "administrador")))
-        for a in alocacoes_disponiveis
-    ]
+    form.alocacao_id.choices = [(a.id, _rotulo_alocacao(a, incluir_usuario=(current_user.papel == "administrador"))) for a in alocacoes_disponiveis]
 
     if form.validate_on_submit():
         alocacao = next((a for a in alocacoes_disponiveis if a.id == form.alocacao_id.data), None)
         if alocacao is None:
             flash("Alocação inválida.", "erro")
             return redirect(url_for("projetos.detalhe_projeto", projeto_id=projeto.id))
-
+        if not _data_dentro_da_vigencia(form.data.data, projeto):
+            flash(f"A data da despesa precisa estar dentro da vigência do projeto ({projeto.vigencia_inicio.strftime('%d/%m/%Y')} a {projeto.vigencia_fim.strftime('%d/%m/%Y')}).", "erro")
+            return render_template("despesas/nova_despesa_projeto.html", form=form, projeto=projeto, saldo_projeto=saldo_projeto, despesas=despesas, mapa_documentos=mapa_documentos)
         saldo = _saldo_alocacao(alocacao)
         if form.valor.data > saldo:
-            flash(f"Valor acima do saldo disponível desta alocação (R$ {saldo:.2f} restantes).", "erro")
-            return render_template(
-                "despesas/nova_despesa_projeto.html", form=form, projeto=projeto,
-                saldo_projeto=saldo_projeto, despesas=despesas,
-            )
-
+            flash(f"Valor acima do saldo disponível desta alocação (R$ {_formatar_moeda(saldo)} restantes).", "erro")
+            return render_template("despesas/nova_despesa_projeto.html", form=form, projeto=projeto, saldo_projeto=saldo_projeto, despesas=despesas, mapa_documentos=mapa_documentos)
         _salvar_despesa(form, alocacao)
         flash("Despesa lançada com sucesso.", "sucesso")
         return redirect(url_for("despesas.nova_despesa_projeto", projeto_id=projeto.id))
 
-    return render_template(
-        "despesas/nova_despesa_projeto.html", form=form, projeto=projeto,
-        saldo_projeto=saldo_projeto, despesas=despesas,
-    )
+    return render_template("despesas/nova_despesa_projeto.html", form=form, projeto=projeto, saldo_projeto=saldo_projeto, despesas=despesas, mapa_documentos=mapa_documentos)
 
 
 @despesas_bp.route("/despesas/<int:despesa_id>/comprovante")
@@ -194,28 +199,71 @@ def ver_comprovante(despesa_id):
     if despesa is None or despesa.comprovante is None:
         flash("Comprovante não encontrado.", "erro")
         return redirect(url_for("projetos.listar_projetos"))
-
+    if not _pode_ver_despesa(despesa):
+        flash("Você não tem permissão para ver este comprovante.", "erro")
+        return redirect(url_for("projetos.listar_projetos"))
     pasta = current_app.config["UPLOAD_FOLDER"]
     return send_from_directory(pasta, despesa.comprovante.arquivo)
 
 
-@despesas_bp.route("/despesas/<int:despesa_id>/estornar", methods=["POST"])
+@despesas_bp.route("/despesas/<int:despesa_id>/estornar", methods=["GET", "POST"])
 @login_required
 def estornar_despesa(despesa_id):
+    if current_user.papel != "administrador":
+        flash("Somente o administrador pode estornar uma despesa.", "erro")
+        return redirect(url_for("projetos.listar_projetos"))
     despesa = db.session.get(Despesa, despesa_id)
     if despesa is None:
         flash("Despesa não encontrada.", "erro")
         return redirect(url_for("projetos.listar_projetos"))
+    if despesa.status != "lancada":
+        flash("Esta despesa já foi estornada ou reprovada.", "erro")
+        return redirect(url_for("projetos.detalhe_projeto", projeto_id=despesa.alocacao.projeto_id))
 
-    alocacao = despesa.alocacao
+    form = EstornarDespesaForm()
+    if form.validate_on_submit():
+        despesa.status = "estornada"
+        despesa.motivo_status = form.motivo.data
+        notificar_usuario(
+            despesa.alocacao.usuario_id,
+            f'Uma despesa sua em "{despesa.alocacao.projeto.nome}" foi estornada: {form.motivo.data}',
+            link=url_for("projetos.detalhe_projeto", projeto_id=despesa.alocacao.projeto_id),
+        )
+        db.session.commit()
+        flash("Despesa estornada com sucesso.", "sucesso")
+        return redirect(url_for("projetos.detalhe_projeto", projeto_id=despesa.alocacao.projeto_id))
+
+    return render_template("despesas/estornar.html", form=form, despesa=despesa)
+
+
+@despesas_bp.route("/despesas/<int:despesa_id>/reprovar", methods=["GET", "POST"])
+@login_required
+def reprovar_despesa(despesa_id):
     if current_user.papel != "administrador":
-        flash("Somente o administrador pode estornar uma despesa.", "erro")
-        return redirect(url_for("projetos.detalhe_projeto", projeto_id=alocacao.projeto_id))
+        flash("Somente o administrador pode reprovar uma despesa.", "erro")
+        return redirect(url_for("projetos.listar_projetos"))
+    despesa = db.session.get(Despesa, despesa_id)
+    if despesa is None:
+        flash("Despesa não encontrada.", "erro")
+        return redirect(url_for("projetos.listar_projetos"))
+    if despesa.status != "lancada":
+        flash("Esta despesa já foi estornada ou reprovada.", "erro")
+        return redirect(url_for("projetos.detalhe_projeto", projeto_id=despesa.alocacao.projeto_id))
 
-    despesa.status = "estornada"
-    db.session.commit()
-    flash("Despesa estornada com sucesso.", "sucesso")
-    return redirect(url_for("projetos.detalhe_projeto", projeto_id=alocacao.projeto_id))
+    form = ReprovarDespesaForm()
+    if form.validate_on_submit():
+        despesa.status = "reprovada"
+        despesa.motivo_status = form.motivo.data
+        notificar_usuario(
+            despesa.alocacao.usuario_id,
+            f'Uma despesa sua em "{despesa.alocacao.projeto.nome}" foi reprovada: {form.motivo.data}',
+            link=url_for("projetos.detalhe_projeto", projeto_id=despesa.alocacao.projeto_id),
+        )
+        db.session.commit()
+        flash("Despesa reprovada.", "sucesso")
+        return redirect(url_for("projetos.detalhe_projeto", projeto_id=despesa.alocacao.projeto_id))
+
+    return render_template("despesas/reprovar.html", form=form, despesa=despesa)
 
 
 @despesas_bp.route("/projetos/<int:projeto_id>/despesas")
@@ -225,6 +273,5 @@ def listar_despesas(projeto_id):
     if projeto is None:
         flash("Projeto não encontrado.", "erro")
         return redirect(url_for("projetos.listar_projetos"))
-
     despesas = _despesas_do_projeto(projeto)
     return render_template("despesas/listar_despesas.html", despesas=despesas, projeto=projeto)

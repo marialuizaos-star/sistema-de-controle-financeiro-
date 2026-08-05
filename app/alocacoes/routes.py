@@ -5,7 +5,8 @@ from flask_login import login_required, current_user
 
 from app.extensions import db
 from app.models import Alocacao, Projeto, Usuario, TipoAlocacao
-from app.alocacoes.forms import AlocacaoForm, TipoAlocacaoForm
+from app.alocacoes.forms import AlocacaoForm, TipoAlocacaoForm, MarcarProblemaAlocacaoForm
+from app.projetos.routes import _pode_ver_projeto
 
 alocacoes_bp = Blueprint("alocacoes", __name__, template_folder="../templates/alocacoes")
 
@@ -33,6 +34,14 @@ def _preencher_opcoes(form, eh_admin):
     ]
 
 
+def _mapa_categoria_padrao():
+    return {
+        t.id: t.categoria_padrao
+        for t in TipoAlocacao.query.filter_by(ativo=True).all()
+        if t.categoria_padrao
+    }
+
+
 def _saldo_disponivel(projeto, alocacao_atual_id=None):
     query = Alocacao.query.filter_by(projeto_id=projeto.id)
     if alocacao_atual_id:
@@ -56,6 +65,10 @@ def nova_alocacao(projeto_id):
         flash("Projeto não encontrado.", "erro")
         return redirect(url_for("projetos.listar_projetos"))
 
+    if not _pode_ver_projeto(projeto_id):
+        flash("Você não tem acesso a este projeto.", "erro")
+        return redirect(url_for("projetos.listar_projetos"))
+
     eh_admin = current_user.papel == "administrador"
     form = AlocacaoForm()
     _preencher_opcoes(form, eh_admin)
@@ -71,7 +84,7 @@ def nova_alocacao(projeto_id):
             )
             return render_template(
                 "alocacoes/nova_alocacao.html", form=form, projeto=projeto, eh_admin=eh_admin,
-                total_alocado=total_alocado, saldo=saldo,
+                total_alocado=total_alocado, saldo=saldo, mapa_categoria_padrao=_mapa_categoria_padrao(),
             )
 
         alocacao = Alocacao(
@@ -88,7 +101,7 @@ def nova_alocacao(projeto_id):
 
     return render_template(
         "alocacoes/nova_alocacao.html", form=form, projeto=projeto, eh_admin=eh_admin,
-        total_alocado=total_alocado, saldo=saldo,
+        total_alocado=total_alocado, saldo=saldo, mapa_categoria_padrao=_mapa_categoria_padrao(),
     )
 
 
@@ -114,7 +127,10 @@ def editar_alocacao(alocacao_id):
                 f"Valor acima do saldo disponível do projeto (R$ {saldo:.2f} restantes).",
                 "erro",
             )
-            return render_template("alocacoes/editar_alocacao.html", form=form, alocacao=alocacao, projeto=projeto)
+            return render_template(
+                "alocacoes/editar_alocacao.html", form=form, alocacao=alocacao, projeto=projeto,
+                mapa_categoria_padrao=_mapa_categoria_padrao(),
+            )
 
         alocacao.usuario_id = form.usuario_id.data
         alocacao.tipo_alocacao_id = form.tipo_alocacao_id.data
@@ -124,22 +140,70 @@ def editar_alocacao(alocacao_id):
         flash("Alocação atualizada com sucesso.", "sucesso")
         return redirect(url_for("projetos.detalhe_projeto", projeto_id=projeto.id))
 
-    return render_template("alocacoes/editar_alocacao.html", form=form, alocacao=alocacao, projeto=projeto)
+    return render_template(
+        "alocacoes/editar_alocacao.html", form=form, alocacao=alocacao, projeto=projeto,
+        mapa_categoria_padrao=_mapa_categoria_padrao(),
+    )
+
+
+@alocacoes_bp.route("/alocacoes/<int:alocacao_id>/marcar-problema", methods=["GET", "POST"])
+@login_required
+def marcar_problema(alocacao_id):
+    """Admin sinaliza que uma alocação específica de um projeto pendente tem
+    algo errado, com motivo — usado durante a revisão, antes de aprovar ou
+    reprovar o projeto como um todo (Opção A, decisão de 03/08/2026)."""
+    if not _somente_administrador():
+        return redirect(url_for("projetos.listar_projetos"))
+
+    alocacao = db.session.get(Alocacao, alocacao_id)
+    if alocacao is None:
+        flash("Alocação não encontrada.", "erro")
+        return redirect(url_for("projetos.listar_projetos"))
+
+    if alocacao.projeto.status != "pendente_aprovacao":
+        flash("Só é possível marcar problema em alocação de projeto pendente de aprovação.", "erro")
+        return redirect(url_for("projetos.detalhe_projeto", projeto_id=alocacao.projeto_id))
+
+    form = MarcarProblemaAlocacaoForm()
+    if form.validate_on_submit():
+        alocacao.motivo_reprovacao = form.motivo.data
+        db.session.commit()
+        flash("Alocação marcada.", "sucesso")
+        return redirect(url_for("projetos.detalhe_projeto", projeto_id=alocacao.projeto_id))
+
+    return render_template("alocacoes/marcar_problema.html", form=form, alocacao=alocacao)
+
+
+@alocacoes_bp.route("/alocacoes/<int:alocacao_id>/remover-marcacao", methods=["POST"])
+@login_required
+def remover_marcacao(alocacao_id):
+    if not _somente_administrador():
+        return redirect(url_for("projetos.listar_projetos"))
+
+    alocacao = db.session.get(Alocacao, alocacao_id)
+    if alocacao is None:
+        flash("Alocação não encontrada.", "erro")
+        return redirect(url_for("projetos.listar_projetos"))
+
+    alocacao.motivo_reprovacao = None
+    db.session.commit()
+    flash("Marcação removida.", "sucesso")
+    return redirect(url_for("projetos.detalhe_projeto", projeto_id=alocacao.projeto_id))
 
 
 @alocacoes_bp.route("/tipos-alocacao", methods=["GET", "POST"])
 @login_required
 def tipos_alocacao():
-    # Antes restrito ao administrador; agora usuário externo também tem
-    # acesso completo (criar, ativar/inativar), por decisão registrada em
-    # 31/07/2026 — sem restrição de perfil aqui.
     form = TipoAlocacaoForm()
     if form.validate_on_submit():
         nome = form.nome.data.strip()
         if TipoAlocacao.query.filter_by(nome=nome).first():
             flash("Esse tipo de alocação já existe.", "erro")
         else:
-            db.session.add(TipoAlocacao(nome=nome, ativo=True))
+            db.session.add(TipoAlocacao(
+                nome=nome, ativo=True, categoria_padrao=form.categoria_padrao.data,
+                documentos_obrigatorios=form.documentos_obrigatorios.data,
+            ))
             db.session.commit()
             flash("Tipo de alocação adicionado.", "sucesso")
         return redirect(url_for("alocacoes.tipos_alocacao"))
@@ -151,8 +215,6 @@ def tipos_alocacao():
 @alocacoes_bp.route("/tipos-alocacao/<int:tipo_id>/alternar-status", methods=["POST"])
 @login_required
 def alternar_status_tipo_alocacao(tipo_id):
-    # Mesmo acesso liberado da rota acima — qualquer usuário logado pode
-    # ativar/inativar tipos de alocação.
     tipo = db.session.get(TipoAlocacao, tipo_id)
     if tipo is None:
         flash("Tipo de alocação não encontrado.", "erro")

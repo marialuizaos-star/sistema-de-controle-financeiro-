@@ -1,6 +1,6 @@
 from flask_wtf import FlaskForm
-from wtforms import SelectField, DecimalField, StringField
-from wtforms.validators import DataRequired, NumberRange, Length
+from wtforms import SelectField, DecimalField, StringField, TextAreaField
+from wtforms.validators import DataRequired, NumberRange, Length, Optional
 
 CATEGORIAS = [
     ("custeio", "Custeio"),
@@ -19,3 +19,17 @@ class AlocacaoForm(FlaskForm):
 
 class TipoAlocacaoForm(FlaskForm):
     nome = StringField("Nome do tipo de alocação", validators=[DataRequired(), Length(max=100)])
+    categoria_padrao = SelectField("Categoria sugerida", choices=CATEGORIAS, validators=[DataRequired()])
+    documentos_obrigatorios = TextAreaField(
+        "Documentos obrigatórios (opcional)",
+        validators=[Optional(), Length(max=500)],
+    )
+
+
+class MarcarProblemaAlocacaoForm(FlaskForm):
+    """Usado pelo admin durante a revisão de um projeto pendente, pra
+    sinalizar que uma alocação específica tem algo errado."""
+    motivo = TextAreaField(
+        "O que está errado nesta alocação",
+        validators=[DataRequired(message="Descreva o que está errado."), Length(max=500)],
+    )

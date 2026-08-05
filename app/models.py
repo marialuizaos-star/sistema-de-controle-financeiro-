@@ -19,11 +19,11 @@ class Usuario(UserMixin, db.Model):
     telefone = db.Column(db.String(20), nullable=True)
     papel = db.Column(db.String(20), nullable=False, default="usuario_externo")
     ativo = db.Column(db.Boolean, nullable=False, default=True)
-
     departamento = db.Column(db.String(150), nullable=True)
+    cpf = db.Column(db.String(14), nullable=True)
     ultimo_acesso = db.Column(db.DateTime(timezone=True), nullable=True)
-
     senha_hash = db.Column(db.String(255), nullable=False)
+    senha_provisoria = db.Column(db.Boolean, nullable=False, default=False)
 
     alocacoes = db.relationship("Alocacao", back_populates="usuario")
 
@@ -73,16 +73,28 @@ class Projeto(db.Model):
     criado_por_id = db.Column(db.Integer, db.ForeignKey("usuario.id"), nullable=True)
     motivo_reprovacao = db.Column(db.Text, nullable=True)
 
+    status_prestacao_contas = db.Column(db.String(20), nullable=True)
+    motivo_reprovacao_prestacao = db.Column(db.Text, nullable=True)
+    enviada_em_prestacao = db.Column(db.DateTime(timezone=True), nullable=True)
+    arquivo_instrucoes = db.Column(db.String(255), nullable=True)
+    instrucoes_nome_original = db.Column(db.String(255), nullable=True)
+
     alocacoes = db.relationship("Alocacao", back_populates="projeto")
     criado_por = db.relationship("Usuario")
 
     STATUS_VALIDOS = ("ativo", "inativo", "encerrado", "pendente_aprovacao", "reprovado")
+    STATUS_PRESTACAO_VALIDOS = ("em_analise", "aceita", "reprovada")
 
     __table_args__ = (
         db.CheckConstraint("valor_total >= 0", name="ck_projeto_valor_total_positivo"),
         db.CheckConstraint(
             "status IN ('ativo', 'inativo', 'encerrado', 'pendente_aprovacao', 'reprovado')",
             name="ck_projeto_status_valido",
+        ),
+        db.CheckConstraint(
+            "status_prestacao_contas IS NULL OR status_prestacao_contas IN "
+            "('em_analise', 'aceita', 'reprovada')",
+            name="ck_projeto_status_prestacao_contas_valido",
         ),
     )
 
@@ -96,6 +108,13 @@ class TipoAlocacao(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nome = db.Column(db.String(100), nullable=False, unique=True)
     ativo = db.Column(db.Boolean, nullable=False, default=True)
+    categoria_padrao = db.Column(db.String(10), nullable=True)
+
+    # Texto livre exibido como alerta ao lançar despesa desse tipo — ex:
+    # "Obrigatório anexar Relatório de Viagem ou Declaração de Diárias."
+    # (novo RF — reunião de 02/08/2026). Opcional: se em branco, nenhum
+    # aviso extra aparece além do upload de comprovante padrão.
+    documentos_obrigatorios = db.Column(db.Text, nullable=True)
 
     def __repr__(self):
         return f"<TipoAlocacao {self.id} {self.nome}>"
@@ -112,6 +131,7 @@ class Alocacao(db.Model):
     valor_alocado = db.Column(db.Numeric(12, 2), nullable=False)
 
     papel_projeto = db.Column(db.String(20), nullable=True)
+    motivo_reprovacao = db.Column(db.Text, nullable=True)
 
     projeto = db.relationship("Projeto", back_populates="alocacoes")
     usuario = db.relationship("Usuario", back_populates="alocacoes")
@@ -153,6 +173,8 @@ class Despesa(db.Model):
     cnpj_favorecido = db.Column(db.String(18), nullable=True)
     numero_comprovante_fiscal = db.Column(db.String(50), nullable=True)
 
+    motivo_status = db.Column(db.Text, nullable=True)
+
     criado_em = db.Column(db.DateTime(timezone=True), default=agora_utc, nullable=False)
 
     alocacao = db.relationship("Alocacao", back_populates="despesas")
@@ -160,13 +182,13 @@ class Despesa(db.Model):
         "Comprovante", back_populates="despesa", uselist=False
     )
 
-    STATUS_VALIDOS = ("lancada", "estornada")
+    STATUS_VALIDOS = ("lancada", "estornada", "reprovada")
     NATUREZAS_VALIDAS = ("custeio", "capital", "devolucao")
 
     __table_args__ = (
         db.CheckConstraint("valor >= 0", name="ck_despesa_valor_positivo"),
         db.CheckConstraint(
-            "status IN ('lancada', 'estornada')", name="ck_despesa_status_valido"
+            "status IN ('lancada', 'estornada', 'reprovada')", name="ck_despesa_status_valido"
         ),
         db.CheckConstraint(
             "natureza IN ('custeio', 'capital', 'devolucao')", name="ck_despesa_natureza_valida"
@@ -230,3 +252,19 @@ class SolicitacaoRemanejamento(db.Model):
 
     def __repr__(self):
         return f"<SolicitacaoRemanejamento {self.id} projeto={self.projeto_id}>"
+
+
+class Notificacao(db.Model):
+    __tablename__ = "notificacao"
+
+    id = db.Column(db.Integer, primary_key=True)
+    usuario_id = db.Column(db.Integer, db.ForeignKey("usuario.id"), nullable=False)
+    mensagem = db.Column(db.String(255), nullable=False)
+    link = db.Column(db.String(255), nullable=True)
+    lida = db.Column(db.Boolean, nullable=False, default=False)
+    criado_em = db.Column(db.DateTime(timezone=True), default=agora_utc, nullable=False)
+
+    usuario = db.relationship("Usuario")
+
+    def __repr__(self):
+        return f"<Notificacao {self.id} usuario={self.usuario_id} lida={self.lida}>"

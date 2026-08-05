@@ -7,6 +7,7 @@ from app.extensions import db
 from app.models import Alocacao, Projeto, Despesa, SolicitacaoRemanejamento
 from app.remanejamentos.forms import SolicitarRemanejamentoForm, ReprovarRemanejamentoForm
 from app.projetos.routes import _pode_ver_projeto
+from app.notificacoes.servicos import notificar_usuario, notificar_administradores
 
 remanejamentos_bp = Blueprint("remanejamentos", __name__, template_folder="../templates/remanejamentos")
 
@@ -14,6 +15,14 @@ ROTULOS_CATEGORIA = {
     "custeio": "Custeio",
     "capital": "Capital",
 }
+
+
+def _formatar_moeda(valor):
+    """Mesma formatação usada em todo o sistema (filtro Jinja 'moeda'): milhar
+    com ponto, decimal com vírgula. Reimplementada aqui porque essa função
+    monta texto direto no Python (rótulo de dropdown), fora do template."""
+    texto = f"{valor:,.2f}"
+    return texto.replace(",", "X").replace(".", ",").replace("X", ".")
 
 
 def _somente_administrador():
@@ -27,12 +36,10 @@ def _rotulo_alocacao(alocacao, saldo, incluir_usuario=False):
     tipo = alocacao.tipo_alocacao.nome if alocacao.tipo_alocacao else "Sem tipo definido"
     categoria = ROTULOS_CATEGORIA.get(alocacao.categoria, alocacao.categoria)
     prefixo = f"{alocacao.usuario.nome} — " if incluir_usuario else ""
-    return f"{prefixo}{tipo} ({categoria}) — saldo R$ {saldo:.2f}"
+    return f"{prefixo}{tipo} ({categoria}) — saldo R$ {_formatar_moeda(saldo)}"
 
 
 def _saldo_nao_gasto(alocacao):
-    """Parte do valor alocado que ainda não virou despesa lançada — é esse o
-    limite do que pode ser remanejado pra outra alocação."""
     total_gasto = (
         db.session.query(db.func.coalesce(db.func.sum(Despesa.valor), 0))
         .filter(Despesa.alocacao_id == alocacao.id, Despesa.status == "lancada")
@@ -44,10 +51,6 @@ def _saldo_nao_gasto(alocacao):
 @remanejamentos_bp.route("/projetos/<int:projeto_id>/remanejamentos/solicitar", methods=["GET", "POST"])
 @login_required
 def solicitar_remanejamento(projeto_id):
-    """Pedido de remanejamento entre duas alocações do mesmo projeto. Quando
-    solicitado por administrador, é executado na hora (o admin é quem também
-    aprovaria); quando solicitado por usuário externo, fica pendente até o
-    administrador aprovar ou reprovar."""
     projeto = db.session.get(Projeto, projeto_id)
     if projeto is None:
         flash("Projeto não encontrado.", "erro")
@@ -67,8 +70,6 @@ def solicitar_remanejamento(projeto_id):
         flash("É preciso ao menos duas alocações neste projeto para solicitar um remanejamento.", "erro")
         return redirect(url_for("projetos.detalhe_projeto", projeto_id=projeto.id))
 
-    # Saldo de cada alocação, calculado uma vez e reaproveitado no rótulo do
-    # dropdown e na tabela de referência do template.
     saldos = {a.id: _saldo_nao_gasto(a) for a in alocacoes_disponiveis}
 
     form = SolicitarRemanejamentoForm()
@@ -90,7 +91,7 @@ def solicitar_remanejamento(projeto_id):
         if form.valor.data > saldo_origem:
             flash(
                 f"Valor acima do saldo ainda não gasto da alocação de origem "
-                f"(R$ {saldo_origem:.2f} disponíveis para remanejar).",
+                f"(R$ {_formatar_moeda(saldo_origem)} disponíveis para remanejar).",
                 "erro",
             )
             return render_template(
@@ -124,6 +125,12 @@ def solicitar_remanejamento(projeto_id):
                 solicitado_por_id=current_user.id,
             )
             db.session.add(remanejamento)
+
+            notificar_administradores(
+                f'Novo pedido de remanejamento em "{projeto.nome}" por {current_user.nome}.',
+                link=url_for("projetos.detalhe_projeto", projeto_id=projeto.id),
+            )
+
             db.session.commit()
             flash("Pedido de remanejamento enviado para aprovação do administrador.", "sucesso")
 
@@ -168,8 +175,8 @@ def aprovar_remanejamento(remanejamento_id):
     saldo_origem = _saldo_nao_gasto(origem)
     if remanejamento.valor > saldo_origem:
         flash(
-            f"Não é possível aprovar: a alocação de origem só tem R$ {saldo_origem:.2f} ainda não gastos "
-            f"(o pedido é de R$ {remanejamento.valor:.2f}). Considere reprovar o pedido.",
+            f"Não é possível aprovar: a alocação de origem só tem R$ {_formatar_moeda(saldo_origem)} ainda não gastos "
+            f"(o pedido é de R$ {_formatar_moeda(remanejamento.valor)}). Considere reprovar o pedido.",
             "erro",
         )
         return redirect(url_for("remanejamentos.remanejamentos_pendentes"))
@@ -178,6 +185,13 @@ def aprovar_remanejamento(remanejamento_id):
     remanejamento.alocacao_destino.valor_alocado += remanejamento.valor
     remanejamento.status = "aprovado"
     remanejamento.motivo_reprovacao = None
+
+    notificar_usuario(
+        remanejamento.solicitado_por_id,
+        f'Seu pedido de remanejamento em "{remanejamento.projeto.nome}" foi aprovado.',
+        link=url_for("projetos.detalhe_projeto", projeto_id=remanejamento.projeto_id),
+    )
+
     db.session.commit()
     flash("Remanejamento aprovado e executado com sucesso.", "sucesso")
     return redirect(url_for("remanejamentos.remanejamentos_pendentes"))
@@ -202,6 +216,13 @@ def reprovar_remanejamento(remanejamento_id):
     if form.validate_on_submit():
         remanejamento.status = "reprovado"
         remanejamento.motivo_reprovacao = form.motivo_reprovacao.data
+
+        notificar_usuario(
+            remanejamento.solicitado_por_id,
+            f'Seu pedido de remanejamento em "{remanejamento.projeto.nome}" foi reprovado.',
+            link=url_for("projetos.detalhe_projeto", projeto_id=remanejamento.projeto_id),
+        )
+
         db.session.commit()
         flash("Pedido de remanejamento reprovado.", "sucesso")
         return redirect(url_for("remanejamentos.remanejamentos_pendentes"))

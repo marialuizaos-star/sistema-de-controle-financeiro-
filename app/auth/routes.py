@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timezone, date, timedelta
 
 from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import login_user, logout_user, login_required, current_user
@@ -12,6 +12,7 @@ from app.auth.forms import (
     SolicitarRecuperacaoForm,
     RedefinirSenhaForm,
     EditarUsuarioForm,
+    TrocarSenhaObrigatoriaForm,
 )
 
 auth_bp = Blueprint("auth", __name__, template_folder="../templates")
@@ -43,9 +44,33 @@ def login():
         db.session.commit()
 
         login_user(usuario, remember=form.lembrar.data)
+
+        if usuario.senha_provisoria:
+            return redirect(url_for("auth.trocar_senha_obrigatoria"))
         return redirect(url_for("auth.painel"))
 
     return render_template("auth/login.html", form=form)
+
+
+@auth_bp.route("/trocar-senha-obrigatoria", methods=["GET", "POST"])
+@login_required
+def trocar_senha_obrigatoria():
+    if not current_user.senha_provisoria:
+        return redirect(url_for("auth.painel"))
+
+    form = TrocarSenhaObrigatoriaForm()
+    if form.validate_on_submit():
+        if not current_user.checar_senha(form.senha_atual.data):
+            form.senha_atual.errors.append("Senha atual incorreta.")
+            return render_template("auth/trocar_senha_obrigatoria.html", form=form)
+
+        current_user.set_senha(form.nova_senha.data)
+        current_user.senha_provisoria = False
+        db.session.commit()
+        flash("Senha alterada com sucesso.", "sucesso")
+        return redirect(url_for("auth.painel"))
+
+    return render_template("auth/trocar_senha_obrigatoria.html", form=form)
 
 
 @auth_bp.route("/logout")
@@ -63,8 +88,6 @@ def _somente_administrador():
 
 
 def _contagem_projetos_usuario(usuario):
-    """Quantidade de projetos em que o usuário está envolvido: onde tem
-    alocação, ou que ele mesmo solicitou o cadastro (mesmo sem alocação)."""
     ids_por_alocacao = {
         projeto_id for (projeto_id,) in
         db.session.query(Alocacao.projeto_id).filter(Alocacao.usuario_id == usuario.id).all()
@@ -77,10 +100,6 @@ def _contagem_projetos_usuario(usuario):
 
 
 def _contexto_listar_usuarios(form_cadastro=None, abrir_cadastro=False):
-    """Monta todo o contexto usado por auth/listar_usuarios.html. Centralizado
-    aqui porque duas rotas precisam renderizar essa mesma tela: a listagem
-    normal (GET /usuarios) e o cadastro quando falha a validação (POST
-    /cadastro), já que o formulário agora vive embutido nesta página."""
     administradores = Usuario.query.filter_by(papel="administrador").order_by(Usuario.nome).all()
     externos = Usuario.query.filter_by(papel="usuario_externo").order_by(Usuario.nome).all()
     contagem_projetos = {
@@ -106,8 +125,6 @@ def cadastro():
         return redirect(url_for("auth.painel"))
 
     if request.method == "GET":
-        # O formulário de cadastro agora vive embutido em /usuarios; não há
-        # mais uma página avulsa pra exibir aqui.
         return redirect(url_for("auth.listar_usuarios"))
 
     form = CadastroUsuarioForm()
@@ -119,21 +136,28 @@ def cadastro():
                 **_contexto_listar_usuarios(form_cadastro=form, abrir_cadastro=True),
             )
 
+        if not form.validar_cpf_unico():
+            form.cpf.errors.append("Já existe um usuário com este CPF.")
+            return render_template(
+                "auth/listar_usuarios.html",
+                **_contexto_listar_usuarios(form_cadastro=form, abrir_cadastro=True),
+            )
+
         novo_usuario = Usuario(
             nome=form.nome.data,
             email=form.email.data,
             telefone=form.telefone.data,
+            cpf=form.cpf.data,
             departamento=form.departamento.data,
             papel=form.papel.data,
+            senha_provisoria=True,
         )
         novo_usuario.set_senha(form.senha.data)
         db.session.add(novo_usuario)
         db.session.commit()
-        flash("Usuário cadastrado com sucesso.", "sucesso")
+        flash("Usuário cadastrado com sucesso. Ele precisará trocar a senha no primeiro acesso.", "sucesso")
         return redirect(url_for("auth.listar_usuarios"))
 
-    # Validação falhou (ex: senha curta, e-mail inválido): reabre a tela de
-    # Usuários com o painel de cadastro já expandido e os erros marcados.
     return render_template(
         "auth/listar_usuarios.html",
         **_contexto_listar_usuarios(form_cadastro=form, abrir_cadastro=True),
@@ -141,8 +165,6 @@ def cadastro():
 
 
 def _resumo_painel_geral():
-    """Monta o consolidado do painel geral (só projetos com status Ativo):
-    total administrado, total gasto, saldo geral e o detalhamento por projeto."""
     from decimal import Decimal
 
     projetos_ativos = Projeto.query.filter_by(status="ativo").order_by(Projeto.nome).all()
@@ -177,9 +199,36 @@ def _resumo_painel_geral():
     }
 
 
+def _projetos_vencendo_em_breve(dias=15):
+    hoje = date.today()
+    limite = hoje + timedelta(days=dias)
+
+    query = Projeto.query.filter(
+        Projeto.status == "ativo",
+        Projeto.vigencia_fim >= hoje,
+        Projeto.vigencia_fim <= limite,
+    )
+
+    if current_user.papel != "administrador":
+        subquery_alocacoes = db.session.query(Alocacao.projeto_id).filter(
+            Alocacao.usuario_id == current_user.id
+        )
+        query = query.filter(
+            db.or_(
+                Projeto.id.in_(subquery_alocacoes),
+                Projeto.criado_por_id == current_user.id,
+            )
+        )
+
+    return query.order_by(Projeto.vigencia_fim).all()
+
+
 @auth_bp.route("/painel")
 @login_required
 def painel():
+    if current_user.senha_provisoria:
+        return redirect(url_for("auth.trocar_senha_obrigatoria"))
+
     painel_geral = None
     projetos = None
 
@@ -195,7 +244,12 @@ def painel():
             .all()
         )
 
-    return render_template("auth/painel.html", projetos=projetos, painel_geral=painel_geral)
+    projetos_vencendo = _projetos_vencendo_em_breve()
+
+    return render_template(
+        "auth/painel.html", projetos=projetos, painel_geral=painel_geral,
+        projetos_vencendo=projetos_vencendo, hoje=date.today(),
+    )
 
 
 @auth_bp.route("/recuperar-senha", methods=["GET", "POST"])
@@ -227,6 +281,7 @@ def redefinir_senha(token):
     form = RedefinirSenhaForm()
     if form.validate_on_submit():
         usuario.set_senha(form.senha.data)
+        usuario.senha_provisoria = False
         db.session.commit()
         flash("Senha redefinida com sucesso. Faça login com a nova senha.", "sucesso")
         return redirect(url_for("auth.login"))
@@ -261,9 +316,20 @@ def editar_usuario(usuario_id):
             flash("Já existe outro usuário com este e-mail.", "erro")
             return render_template("auth/editar_usuario.html", form=form, usuario=usuario)
 
+        cpf_digitos = "".join(c for c in form.cpf.data if c.isdigit())
+        outros_usuarios = Usuario.query.filter(Usuario.id != usuario.id).all()
+        cpf_existente = any(
+            u.cpf and "".join(c for c in u.cpf if c.isdigit()) == cpf_digitos
+            for u in outros_usuarios
+        )
+        if cpf_existente:
+            flash("Já existe outro usuário com este CPF.", "erro")
+            return render_template("auth/editar_usuario.html", form=form, usuario=usuario)
+
         usuario.nome = form.nome.data
         usuario.email = form.email.data
         usuario.telefone = form.telefone.data
+        usuario.cpf = form.cpf.data
         usuario.departamento = form.departamento.data
         usuario.papel = form.papel.data
         db.session.commit()
@@ -331,3 +397,8 @@ def excluir_usuario(usuario_id):
 
     flash("Usuário excluído com sucesso.", "sucesso")
     return redirect(url_for("auth.listar_usuarios"))
+
+@auth_bp.route("/ajuda")
+@login_required
+def ajuda():
+    return render_template("ajuda.html")

@@ -1,12 +1,14 @@
+import os
+import uuid
 from decimal import Decimal
 
-from flask import Blueprint, render_template, redirect, url_for, flash
+from flask import Blueprint, render_template, redirect, url_for, flash, current_app, send_from_directory
 from flask_login import login_required, current_user
 from sqlalchemy import extract
 
 from app.extensions import db
 from app.models import Projeto, Alocacao, Despesa, TipoAlocacao
-from app.projetos.forms import ProjetoForm, SolicitarProjetoForm, ReprovarProjetoForm
+from app.projetos.forms import ProjetoForm, SolicitarProjetoForm, ReprovarProjetoForm, EnviarInstrucoesForm
 
 projetos_bp = Blueprint("projetos", __name__, template_folder="../templates/projetos")
 
@@ -36,13 +38,20 @@ def _opcoes_tipo_alocacao():
     ]
 
 
+def _mapa_categoria_padrao():
+    return {
+        t.id: t.categoria_padrao
+        for t in TipoAlocacao.query.filter_by(ativo=True).all()
+        if t.categoria_padrao
+    }
+
+
 def _preencher_opcoes_itens_plano(form, opcoes_tipo_alocacao):
     for item in form.itens_plano.entries:
         item.form.tipo_alocacao_id.choices = opcoes_tipo_alocacao
 
 
 def _codigo_projeto(projeto):
-    """Código de identificação do projeto, no formato PRJ-{ano}-{número}."""
     ano = projeto.vigencia_inicio.year
     mesmo_ano = (
         Projeto.query.filter(extract("year", Projeto.vigencia_inicio) == ano)
@@ -103,15 +112,12 @@ def novo_projeto():
 @projetos_bp.route("/projetos/solicitar", methods=["GET", "POST"])
 @login_required
 def solicitar_projeto():
-    """Cadastro de projeto por usuário externo (novo RF): tela única onde os
-    dados do projeto e o plano de trabalho (itens de alocação) são enviados
-    juntos, numa só solicitação. O projeto nasce como 'pendente_aprovacao' e
-    só passa a 'ativo' quando o administrador aprova."""
     if current_user.papel == "administrador":
         flash("Administradores cadastram projetos diretamente, sem necessidade de aprovação.", "erro")
         return redirect(url_for("projetos.novo_projeto"))
 
     opcoes_tipo_alocacao = _opcoes_tipo_alocacao()
+    mapa_categoria_padrao = _mapa_categoria_padrao()
 
     form = SolicitarProjetoForm()
     _preencher_opcoes_itens_plano(form, opcoes_tipo_alocacao)
@@ -126,7 +132,7 @@ def solicitar_projeto():
             criado_por_id=current_user.id,
         )
         db.session.add(projeto)
-        db.session.flush()  # gera projeto.id antes de criar as alocações
+        db.session.flush()
 
         for item in form.itens_plano.entries:
             alocacao = Alocacao(
@@ -139,12 +145,19 @@ def solicitar_projeto():
             )
             db.session.add(alocacao)
 
+        from app.notificacoes.servicos import notificar_administradores
+        notificar_administradores(
+            f'Novo projeto solicitado: "{projeto.nome}" por {current_user.nome}.',
+            link=url_for("projetos.detalhe_projeto", projeto_id=projeto.id),
+        )
+
         db.session.commit()
         flash("Projeto e plano de trabalho enviados para aprovação do administrador.", "sucesso")
         return redirect(url_for("projetos.detalhe_projeto", projeto_id=projeto.id))
 
     return render_template(
-        "projetos/solicitar_projeto.html", form=form, opcoes_tipo_alocacao=opcoes_tipo_alocacao
+        "projetos/solicitar_projeto.html", form=form, opcoes_tipo_alocacao=opcoes_tipo_alocacao,
+        mapa_categoria_padrao=mapa_categoria_padrao,
     )
 
 
@@ -175,6 +188,15 @@ def aprovar_projeto(projeto_id):
 
     projeto.status = "ativo"
     projeto.motivo_reprovacao = None
+
+    if projeto.criado_por_id:
+        from app.notificacoes.servicos import notificar_usuario
+        notificar_usuario(
+            projeto.criado_por_id,
+            f'Seu projeto "{projeto.nome}" foi aprovado.',
+            link=url_for("projetos.detalhe_projeto", projeto_id=projeto.id),
+        )
+
     db.session.commit()
     flash("Projeto aprovado com sucesso.", "sucesso")
     return redirect(url_for("projetos.detalhe_projeto", projeto_id=projeto.id))
@@ -199,6 +221,15 @@ def reprovar_projeto(projeto_id):
     if form.validate_on_submit():
         projeto.status = "reprovado"
         projeto.motivo_reprovacao = form.motivo_reprovacao.data
+
+        if projeto.criado_por_id:
+            from app.notificacoes.servicos import notificar_usuario
+            notificar_usuario(
+                projeto.criado_por_id,
+                f'Seu projeto "{projeto.nome}" foi reprovado.',
+                link=url_for("projetos.detalhe_projeto", projeto_id=projeto.id),
+            )
+
         db.session.commit()
         flash("Projeto reprovado.", "sucesso")
         return redirect(url_for("projetos.projetos_pendentes"))
@@ -229,6 +260,51 @@ def editar_projeto(projeto_id):
         return redirect(url_for("projetos.listar_projetos"))
 
     return render_template("projetos/editar_projeto.html", form=form, projeto=projeto)
+
+
+@projetos_bp.route("/projetos/<int:projeto_id>/instrucoes/enviar", methods=["GET", "POST"])
+@login_required
+def enviar_instrucoes(projeto_id):
+    if not _somente_administrador():
+        return redirect(url_for("projetos.listar_projetos"))
+
+    projeto = db.session.get(Projeto, projeto_id)
+    if projeto is None:
+        flash("Projeto não encontrado.", "erro")
+        return redirect(url_for("projetos.listar_projetos"))
+
+    form = EnviarInstrucoesForm()
+    if form.validate_on_submit():
+        arquivo = form.arquivo.data
+        extensao = arquivo.filename.rsplit(".", 1)[-1].lower()
+        nome_arquivo = f"{uuid.uuid4().hex}.{extensao}"
+        pasta = current_app.config["UPLOAD_FOLDER"]
+        os.makedirs(pasta, exist_ok=True)
+        arquivo.save(os.path.join(pasta, nome_arquivo))
+
+        projeto.arquivo_instrucoes = nome_arquivo
+        projeto.instrucoes_nome_original = arquivo.filename
+        db.session.commit()
+        flash("Documento de instruções enviado.", "sucesso")
+        return redirect(url_for("projetos.detalhe_projeto", projeto_id=projeto.id))
+
+    return render_template("projetos/enviar_instrucoes.html", form=form, projeto=projeto)
+
+
+@projetos_bp.route("/projetos/<int:projeto_id>/instrucoes")
+@login_required
+def ver_instrucoes(projeto_id):
+    projeto = db.session.get(Projeto, projeto_id)
+    if projeto is None or not projeto.arquivo_instrucoes:
+        flash("Documento não encontrado.", "erro")
+        return redirect(url_for("projetos.listar_projetos"))
+
+    if not _pode_ver_projeto(projeto_id):
+        flash("Você não tem acesso a este projeto.", "erro")
+        return redirect(url_for("projetos.listar_projetos"))
+
+    pasta = current_app.config["UPLOAD_FOLDER"]
+    return send_from_directory(pasta, projeto.arquivo_instrucoes, download_name=projeto.instrucoes_nome_original)
 
 
 @projetos_bp.route("/projetos/<int:projeto_id>")
