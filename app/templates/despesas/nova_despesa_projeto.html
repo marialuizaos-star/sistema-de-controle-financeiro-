@@ -11,6 +11,8 @@
     <div class="stat-value" style="margin-top:8px;">R$ {{ saldo_projeto | moeda }}</div>
 </div>
 
+<div id="aviso-documentos" class="flash" style="background: var(--warning-soft); color: var(--warning); display:none;"></div>
+
 <div class="card">
     <h2>Dados da Despesa</h2>
     <form method="POST" enctype="multipart/form-data">
@@ -40,7 +42,7 @@
         <div style="display:flex; gap:16px; flex-wrap:wrap;">
             <div style="flex:1; min-width:200px;">
                 <label>{{ form.cnpj_favorecido.label }}</label>
-                {{ form.cnpj_favorecido(placeholder="00.000.000/0000-00") }}
+                {{ form.cnpj_favorecido(class="campo-cnpj", placeholder="00.000.000/0000-00") }}
                 {% for erro in form.cnpj_favorecido.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
             </div>
             <div style="flex:1; min-width:200px;">
@@ -82,14 +84,7 @@
     </div>
     <table style="margin-top:14px;">
         <tr>
-            <th>Data</th>
-            <th>Descrição</th>
-            <th>Tipo</th>
-            <th>Responsável</th>
-            <th>Comprovante</th>
-            <th>Valor</th>
-            <th>Status</th>
-            <th style="text-align:right">Ações</th>
+            <th>Data</th><th>Descrição</th><th>Tipo</th><th>Responsável</th><th>Comprovante</th><th>Valor</th><th>Status</th><th style="text-align:right">Ações</th>
         </tr>
         {% for despesa in despesas %}
         {% set cor_despesa = {"lancada": "verde", "estornada": "cinza", "reprovada": "vermelho"}.get(despesa.status, "cinza") %}
@@ -124,10 +119,29 @@
     </table>
 </div>
 
+<script id="mapa-documentos" type="application/json">{{ mapa_documentos | tojson }}</script>
 <script>
     function atualizarNomeArquivo(input) {
         var texto = document.getElementById('nome-arquivo-selecionado');
         texto.textContent = input.files.length ? input.files[0].name : '';
     }
+    (function () {
+        var mapaDocumentos = JSON.parse(document.getElementById('mapa-documentos').textContent);
+        var campoAlocacao = document.querySelector('select[name="alocacao_id"]');
+        var avisoDiv = document.getElementById('aviso-documentos');
+        function atualizarAviso() {
+            var texto = mapaDocumentos[campoAlocacao.value];
+            if (texto) {
+                avisoDiv.textContent = '⚠️ ' + texto;
+                avisoDiv.style.display = 'block';
+            } else {
+                avisoDiv.style.display = 'none';
+            }
+        }
+        if (campoAlocacao) {
+            campoAlocacao.addEventListener('change', atualizarAviso);
+            atualizarAviso();
+        }
+    })();
 </script>
 {% endblock %}

@@ -86,6 +86,7 @@
         button { margin-top: 18px; padding: 10px 22px; background: var(--botao); color: white; border: none; border-radius: 999px; cursor: pointer; font-weight: 600; }
         button.perigo { background: var(--danger); border-radius: 999px; }
         button.sucesso { background: var(--success); border-radius: 999px; }
+        button:disabled { opacity: 0.65; cursor: not-allowed; }
         .tag-tipo { display:inline-flex; align-items:center; gap:6px; padding:6px 8px 6px 14px; border-radius:999px; background: var(--accent-soft); color: var(--accent); font-size:13px; font-weight:600; }
         .tag-tipo.inativo { background:#F1F5F9; color: var(--muted); text-decoration: line-through; }
         .tag-acao { margin:0; padding:2px 8px; border-radius:999px; font-size:12px; }
@@ -256,6 +257,7 @@
         {% if current_user.papel == "administrador" %}
         <a class="app-nav-link {{ 'active' if request.endpoint in ['auth.listar_usuarios','auth.editar_usuario','auth.cadastro'] else '' }}" href="{{ url_for('auth.listar_usuarios') }}">Usuários</a>
         {% endif %}
+        <a class="app-nav-link {{ 'active' if request.endpoint == 'downloads.listar' else '' }}" href="{{ url_for('downloads.listar') }}">Downloads</a>
         <a class="app-nav-link {{ 'active' if request.endpoint == 'auth.ajuda' else '' }}" href="{{ url_for('auth.ajuda') }}">Ajuda</a>
     </nav>
     <div class="app-user">
@@ -361,11 +363,44 @@
         });
     });
 
+    function aplicarMascaraCnpj(campo) {
+        var digitos = campo.value.replace(/\D/g, '').slice(0, 14);
+        var resultado = digitos;
+        if (digitos.length > 2) resultado = digitos.slice(0, 2) + '.' + digitos.slice(2);
+        if (digitos.length > 5) resultado = resultado.slice(0, 6) + '.' + resultado.slice(6);
+        if (digitos.length > 8) resultado = resultado.slice(0, 10) + '/' + resultado.slice(10);
+        if (digitos.length > 12) resultado = resultado.slice(0, 15) + '-' + resultado.slice(15);
+        campo.value = resultado;
+    }
+
+    document.querySelectorAll('.campo-cnpj').forEach(function (campo) {
+        campo.addEventListener('input', function () {
+            aplicarMascaraCnpj(campo);
+        });
+    });
+
+    // Evita duplo clique em ações importantes: ao enviar qualquer formulário,
+    // desabilita o(s) botão(ões) de envio e troca o texto, até a página
+    // recarregar. Forms com upload de arquivo (comprovante, instruções,
+    // documentos) ganham um aviso extra, já que podem demorar mais.
+    // Fica por último no script pra rodar depois de qualquer conversão de
+    // valor (máscara de moeda) que também acontece no evento "submit".
     document.querySelectorAll('form').forEach(function (form) {
         form.addEventListener('submit', function () {
-            form.querySelectorAll('.campo-moeda').forEach(function (campo) {
-                campo.value = campo.value.replace(/\./g, '').replace(',', '.');
+            var temArquivo = form.enctype === 'multipart/form-data';
+            var botoes = form.querySelectorAll('button:not([type="button"])');
+            botoes.forEach(function (botao) {
+                if (botao.disabled) return;
+                botao.disabled = true;
+                botao.textContent = temArquivo ? 'Enviando arquivo...' : 'Enviando...';
             });
+            if (temArquivo) {
+                var aviso = document.createElement('p');
+                aviso.className = 'link-muted';
+                aviso.style.marginTop = '8px';
+                aviso.textContent = 'Isso pode levar alguns instantes, dependendo do tamanho do arquivo. Não feche esta página.';
+                form.appendChild(aviso);
+            }
         });
     });
 </script>

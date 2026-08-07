@@ -53,7 +53,7 @@
         <div style="display:flex; gap:16px; flex-wrap:wrap;">
             <div style="flex:1; min-width:200px;">
                 <label>{{ form.cnpj_favorecido.label }}</label>
-                {{ form.cnpj_favorecido(placeholder="00.000.000/0000-00") }}
+                {{ form.cnpj_favorecido(class="campo-cnpj", placeholder="00.000.000/0000-00") }}
                 {% for erro in form.cnpj_favorecido.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
             </div>
             <div style="flex:1; min-width:200px;">

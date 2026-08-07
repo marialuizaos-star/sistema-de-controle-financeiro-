@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block titulo %}Acesso negado — SCF PROPEG{% endblock %}
+{% block conteudo %}
+<h2>Acesso negado</h2>
+<p style="text-align:center; font-size:13px; color:var(--muted); margin-top:-10px;">
+    Você não tem permissão para acessar esta página.
+</p>
+{% if current_user.is_authenticated %}
+<a href="{{ url_for('auth.painel') }}" class="btn-link-primario" style="display:block; text-align:center; margin-top:22px;">Voltar ao início</a>
+{% else %}
+<a href="{{ url_for('auth.login') }}" class="btn-link-primario" style="display:block; text-align:center; margin-top:22px;">Ir para o login</a>
+{% endif %}
+{% endblock %}

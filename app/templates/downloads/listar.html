@@ -1,0 +1,56 @@
+{% extends "base_app.html" %}
+{% block titulo %}Downloads — SCF PROPEG{% endblock %}
+{% block conteudo %}
+<h1 style="font-size:22px; margin:0 0 4px 0;">Central de Downloads</h1>
+<p class="link-muted" style="margin:0 0 20px 0;">Manual do sistema e modelos de documentos (relatório de viagem, recibo, prestação de contas). Baixe, preencha, converta pra PDF e anexe na hora de lançar a despesa ou enviar a prestação de contas.</p>
+
+{% if current_user.papel == "administrador" %}
+<div class="card">
+    <h2>Adicionar documento</h2>
+    <form method="POST" action="{{ url_for('downloads.novo') }}" enctype="multipart/form-data">
+        {{ form.hidden_tag() }}
+        <div style="display:flex; gap:16px; flex-wrap:wrap;">
+            <div style="flex:1; min-width:220px;">
+                <label>{{ form.titulo.label }}</label>
+                {{ form.titulo(placeholder="Ex: Modelo de Relatório de Viagem") }}
+            </div>
+            <div style="flex:1; min-width:220px;">
+                <label>{{ form.arquivo.label }}</label>
+                {{ form.arquivo() }}
+            </div>
+        </div>
+        <label>{{ form.descricao.label }}</label>
+        {{ form.descricao(rows=2, placeholder="Ex: Use para diárias com deslocamento fora do estado.") }}
+        <button type="submit">+ Adicionar</button>
+    </form>
+</div>
+{% endif %}
+
+<div class="card">
+    <h2>Documentos disponíveis</h2>
+    <table>
+        <tr>
+            <th>Documento</th>
+            <th>Descrição</th>
+            <th style="text-align:right">Ações</th>
+        </tr>
+        {% for documento in documentos %}
+        <tr class="linha-clicavel" data-href="{{ url_for('downloads.baixar', documento_id=documento.id) }}">
+            <td>📄 {{ documento.titulo }}</td>
+            <td class="link-muted">{{ documento.descricao or "—" }}</td>
+            <td style="text-align:right" class="impede-clique-linha">
+                <a href="{{ url_for('downloads.baixar', documento_id=documento.id) }}" class="btn-sm">Baixar</a>
+                {% if current_user.papel == "administrador" %}
+                <form method="POST" action="{{ url_for('downloads.excluir', documento_id=documento.id) }}" style="display:inline"
+                      onsubmit="return confirm('Remover {{ documento.titulo }} da central de downloads?');">
+                    <button type="submit" class="btn-sm btn-sm-perigo">Remover</button>
+                </form>
+                {% endif %}
+            </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="3" class="link-muted">Nenhum documento disponível ainda.</td></tr>
+        {% endfor %}
+    </table>
+</div>
+{% endblock %}
