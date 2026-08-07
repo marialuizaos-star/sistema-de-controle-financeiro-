@@ -34,13 +34,44 @@ def _validar_conteudo_comprovante(form, campo):
         )
 
 
+def _limpar_cnpj(valor):
+    if valor is None:
+        return valor
+    return "".join(c for c in valor if c.isdigit())
+
+
+def _validar_cnpj(form, campo):
+    """CNPJ é opcional — só valida se algo foi digitado."""
+    if not campo.data:
+        return
+    digitos = _limpar_cnpj(campo.data)
+    if len(digitos) != 14:
+        raise ValidationError("CNPJ deve ter 14 dígitos.")
+    if digitos == digitos[0] * 14:
+        raise ValidationError("CNPJ inválido.")
+
+    pesos1 = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]
+    soma = sum(int(digitos[i]) * pesos1[i] for i in range(12))
+    resto = soma % 11
+    digito1 = 0 if resto < 2 else 11 - resto
+    if digito1 != int(digitos[12]):
+        raise ValidationError("CNPJ inválido.")
+
+    pesos2 = [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]
+    soma = sum(int(digitos[i]) * pesos2[i] for i in range(13))
+    resto = soma % 11
+    digito2 = 0 if resto < 2 else 11 - resto
+    if digito2 != int(digitos[13]):
+        raise ValidationError("CNPJ inválido.")
+
+
 class DespesaForm(FlaskForm):
     alocacao_id = SelectField("Alocação", coerce=int, validators=[DataRequired()])
     data = DateField("Data da despesa", validators=[DataRequired()])
     natureza = SelectField("Natureza da despesa", choices=NATUREZAS, validators=[DataRequired()])
     valor = DecimalField("Valor (R$)", validators=[DataRequired(), NumberRange(min=0)], places=2)
     fornecedor = StringField("Nome do favorecido", validators=[DataRequired(), Length(max=150)])
-    cnpj_favorecido = StringField("CNPJ do favorecido", validators=[Optional(), Length(max=18)])
+    cnpj_favorecido = StringField("CNPJ do favorecido", validators=[Optional(), Length(max=18), _validar_cnpj])
     numero_comprovante_fiscal = StringField("Número do comprovante fiscal", validators=[Optional(), Length(max=50)])
     descricao = TextAreaField("Descrição", validators=[Optional(), Length(max=1000)])
     comprovante = FileField(
@@ -54,14 +85,12 @@ class DespesaForm(FlaskForm):
 
 
 class EstornarDespesaForm(FlaskForm):
-    """Motivo obrigatório ao estornar (decisão de 02/08/2026 — antes não pedia)."""
     motivo = TextAreaField(
         "Motivo do estorno", validators=[DataRequired(message="Informe o motivo do estorno."), Length(max=1000)]
     )
 
 
 class ReprovarDespesaForm(FlaskForm):
-    """Reprova a despesa (status diferente de estornar), com motivo obrigatório."""
     motivo = TextAreaField(
         "Motivo da reprovação", validators=[DataRequired(message="Informe o motivo da reprovação."), Length(max=1000)]
     )

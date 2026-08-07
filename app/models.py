@@ -268,3 +268,16 @@ class Notificacao(db.Model):
 
     def __repr__(self):
         return f"<Notificacao {self.id} usuario={self.usuario_id} lida={self.lida}>"
+
+class DocumentoModelo(db.Model):
+    __tablename__ = "documento_modelo"
+
+    id = db.Column(db.Integer, primary_key=True)
+    titulo = db.Column(db.String(150), nullable=False)
+    descricao = db.Column(db.Text, nullable=True)
+    arquivo = db.Column(db.String(255), nullable=False)
+    nome_original = db.Column(db.String(255), nullable=False)
+    criado_em = db.Column(db.DateTime(timezone=True), default=agora_utc, nullable=False)
+
+    def __repr__(self):
+        return f"<DocumentoModelo {self.id} {self.titulo}>"
