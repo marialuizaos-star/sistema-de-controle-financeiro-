@@ -1,5 +1,6 @@
 import io
 from datetime import datetime
+from decimal import Decimal
 
 from flask import Blueprint, send_file, flash, redirect, url_for
 from flask_login import login_required, current_user
@@ -28,9 +29,6 @@ def _moeda(valor):
 
 
 def _responsavel_do_projeto(projeto, alocacoes):
-    """Pra exibir no cabeçalho do PDF: prioriza quem solicitou o cadastro do
-    projeto; se não houver (projeto cadastrado direto pelo admin), tenta achar
-    quem tem o papel de Coordenador numa alocação; senão retorna None."""
     if projeto.criado_por:
         return projeto.criado_por
     coordenador = next((a for a in alocacoes if a.papel_projeto == "coordenador"), None)
@@ -166,4 +164,107 @@ def relatorio_projeto(projeto_id):
     buffer.seek(0)
 
     nome_arquivo = f"prestacao_contas_{projeto.nome.replace(' ', '_')}.pdf"
+    return send_file(buffer, as_attachment=True, download_name=nome_arquivo, mimetype="application/pdf")
+
+
+@relatorios_bp.route("/relatorios/consolidado")
+@login_required
+def relatorio_consolidado():
+    if current_user.papel != "administrador":
+        flash("Você não tem permissão para acessar esta página.", "erro")
+        return redirect(url_for("auth.painel"))
+
+    projetos = Projeto.query.order_by(Projeto.nome).all()
+
+    linhas_projetos = []
+    total_administrado = Decimal("0")
+    total_gasto_geral = Decimal("0")
+
+    for projeto in projetos:
+        total_gasto = (
+            db.session.query(db.func.coalesce(db.func.sum(Despesa.valor), 0))
+            .join(Alocacao)
+            .filter(Alocacao.projeto_id == projeto.id, Despesa.status == "lancada")
+            .scalar()
+        )
+        total_gasto = Decimal(total_gasto)
+        saldo = projeto.valor_total - total_gasto
+
+        total_administrado += projeto.valor_total
+        total_gasto_geral += total_gasto
+
+        alocacoes = Alocacao.query.filter_by(projeto_id=projeto.id).all()
+        responsavel = _responsavel_do_projeto(projeto, alocacoes)
+
+        linhas_projetos.append({
+            "projeto": projeto,
+            "responsavel": responsavel.nome if responsavel else "—",
+            "total_gasto": total_gasto,
+            "saldo": saldo,
+        })
+
+    saldo_geral = total_administrado - total_gasto_geral
+
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4, topMargin=2 * cm, bottomMargin=2 * cm)
+    styles = getSampleStyleSheet()
+    titulo = ParagraphStyle("titulo", parent=styles["Title"], fontSize=16, spaceAfter=4)
+    subtitulo = ParagraphStyle("subtitulo", parent=styles["Normal"], fontSize=10, textColor=colors.grey, spaceAfter=16)
+    secao = ParagraphStyle("secao", parent=styles["Heading2"], fontSize=12, spaceBefore=16, spaceAfter=8)
+
+    elementos = []
+    elementos.append(Paragraph("Relatório Consolidado de Projetos", titulo))
+    elementos.append(Paragraph("Sistema de Controle Financeiro — PROPEG/UFAC", subtitulo))
+
+    elementos.append(Paragraph("Resumo geral", secao))
+    resumo = [
+        ["Total de projetos", str(len(projetos))],
+        ["Total administrado", _moeda(total_administrado)],
+        ["Total gasto (despesas lançadas)", _moeda(total_gasto_geral)],
+        ["Saldo geral", _moeda(saldo_geral)],
+    ]
+    t = Table(resumo, colWidths=[8 * cm, 8 * cm])
+    t.setStyle(TableStyle([
+        ("FONTSIZE", (0, 0), (-1, -1), 9),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+        ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#E2E8F0")),
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#F8FAFC")),
+        ("FONTNAME", (0, -1), (-1, -1), "Helvetica-Bold"),
+    ]))
+    elementos.append(t)
+
+    elementos.append(Paragraph("Projetos", secao))
+    if linhas_projetos:
+        linhas = [["Projeto", "Responsável", "Status", "Valor total", "Total gasto", "Saldo"]]
+        for item in linhas_projetos:
+            linhas.append([
+                item["projeto"].nome,
+                item["responsavel"],
+                ROTULOS.get(item["projeto"].status, item["projeto"].status),
+                _moeda(item["projeto"].valor_total),
+                _moeda(item["total_gasto"]),
+                _moeda(item["saldo"]),
+            ])
+        t = Table(linhas, colWidths=[4.5 * cm, 3.5 * cm, 2.5 * cm, 2.5 * cm, 2.5 * cm, 2.5 * cm])
+        t.setStyle(TableStyle([
+            ("FONTSIZE", (0, 0), (-1, -1), 7.5),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+            ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#E2E8F0")),
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#2B3A55")),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+        ]))
+        elementos.append(t)
+    else:
+        elementos.append(Paragraph("Nenhum projeto cadastrado.", styles["Normal"]))
+
+    elementos.append(Spacer(1, 24))
+    rodape = ParagraphStyle("rodape", parent=styles["Normal"], fontSize=8, textColor=colors.grey)
+    agora = datetime.now().strftime("%d/%m/%Y às %H:%M")
+    elementos.append(Paragraph(f"Relatório gerado em {agora} por {current_user.nome}.", rodape))
+
+    doc.build(elementos)
+    buffer.seek(0)
+
+    nome_arquivo = f"relatorio_consolidado_{datetime.now().strftime('%Y%m%d')}.pdf"
     return send_file(buffer, as_attachment=True, download_name=nome_arquivo, mimetype="application/pdf")
