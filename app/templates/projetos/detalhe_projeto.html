@@ -254,8 +254,13 @@
             </td>
             <td style="text-align:right" class="impede-clique-linha">
                 {% if current_user.papel == "administrador" and despesa.status == "lancada" %}
-                <a href="{{ url_for('despesas.estornar_despesa', despesa_id=despesa.id) }}" class="btn-sm btn-sm-perigo">Estornar</a>
-                <a href="{{ url_for('despesas.reprovar_despesa', despesa_id=despesa.id) }}" class="btn-sm btn-sm-perigo">Reprovar</a>
+                <div class="menu-dropdown">
+                    <button type="button" class="menu-dropdown-btn" aria-label="Mais opções">☰</button>
+                    <div class="menu-dropdown-lista">
+                        <a href="{{ url_for('despesas.estornar_despesa', despesa_id=despesa.id) }}" class="perigo">Estornar</a>
+                        <a href="{{ url_for('despesas.reprovar_despesa', despesa_id=despesa.id) }}" class="perigo">Reprovar</a>
+                    </div>
+                </div>
                 {% endif %}
             </td>
         </tr>
