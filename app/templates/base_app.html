@@ -363,6 +363,14 @@
         });
     });
 
+    document.querySelectorAll('form').forEach(function (form) {
+        form.addEventListener('submit', function () {
+            form.querySelectorAll('.campo-moeda').forEach(function (campo) {
+                campo.value = campo.value.replace(/\./g, '').replace(',', '.');
+            });
+        });
+    });
+
     function aplicarMascaraCnpj(campo) {
         var digitos = campo.value.replace(/\D/g, '').slice(0, 14);
         var resultado = digitos;
@@ -376,6 +384,21 @@
     document.querySelectorAll('.campo-cnpj').forEach(function (campo) {
         campo.addEventListener('input', function () {
             aplicarMascaraCnpj(campo);
+        });
+    });
+
+    function aplicarMascaraCpf(campo) {
+        var digitos = campo.value.replace(/\D/g, '').slice(0, 11);
+        var resultado = digitos;
+        if (digitos.length > 3) resultado = digitos.slice(0, 3) + '.' + digitos.slice(3);
+        if (digitos.length > 6) resultado = resultado.slice(0, 7) + '.' + resultado.slice(7);
+        if (digitos.length > 9) resultado = resultado.slice(0, 11) + '-' + resultado.slice(11);
+        campo.value = resultado;
+    }
+
+    document.querySelectorAll('.campo-cpf').forEach(function (campo) {
+        campo.addEventListener('input', function () {
+            aplicarMascaraCpf(campo);
         });
     });
 

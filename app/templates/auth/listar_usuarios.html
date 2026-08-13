@@ -35,7 +35,7 @@
         <div style="display:flex; gap:16px; flex-wrap:wrap;">
             <div style="flex:1; min-width:220px;">
                 <label>{{ form_cadastro.cpf.label }}</label>
-                {{ form_cadastro.cpf(placeholder="000.000.000-00") }}
+                {{ form_cadastro.cpf(class="campo-cpf", placeholder="000.000.000-00") }}
                 {% for erro in form_cadastro.cpf.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
             </div>
             <div style="flex:1; min-width:220px;">
