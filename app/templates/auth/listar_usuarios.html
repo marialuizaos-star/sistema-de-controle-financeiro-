@@ -57,7 +57,7 @@
 
         <div style="display:flex; gap:16px; flex-wrap:wrap;">
             <div style="flex:1; min-width:220px;">
-                <label>{{ form_cadastro.senha.label }} (provisória)</label>
+                <label>{{ form_cadastro.senha.label }}</label>
                 {{ form_cadastro.senha() }}
                 {% for erro in form_cadastro.senha.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
             </div>
