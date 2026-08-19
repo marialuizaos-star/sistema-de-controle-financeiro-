@@ -21,7 +21,7 @@
         {% for erro in form.cpf.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
 
         <label>{{ form.telefone.label }}</label>
-        {{ form.telefone() }}
+        {{ form.telefone(class="campo-telefone", placeholder="(68) 90000-0000") }}
 
         <label>{{ form.departamento.label }}</label>
         {{ form.departamento() }}
