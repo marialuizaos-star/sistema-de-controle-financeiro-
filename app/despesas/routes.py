@@ -14,6 +14,7 @@ from app.notificacoes.servicos import notificar_usuario
 despesas_bp = Blueprint("despesas", __name__, template_folder="../templates/despesas")
 
 ROTULOS_CATEGORIA = {"custeio": "Custeio", "capital": "Capital"}
+ROTULOS_NATUREZA = {"custeio": "Custeio", "capital": "Capital", "devolucao": "Devolução"}
 
 
 def _formatar_moeda(valor):
@@ -45,6 +46,20 @@ def _saldo_disponivel_projeto(projeto):
         .scalar()
     )
     return projeto.valor_total - Decimal(total_despesas)
+
+
+def _naturezas_disponiveis(projeto):
+    """Naturezas de despesa permitidas conforme a categoria do projeto:
+    projeto só Custeio -> Custeio + Devolução; só Capital -> Capital +
+    Devolução; projeto "ambos" -> as três. Projetos legados sem categoria
+    definida (None) liberam as três, mantendo o comportamento anterior."""
+    if projeto.categoria == "custeio":
+        chaves = ("custeio", "devolucao")
+    elif projeto.categoria == "capital":
+        chaves = ("capital", "devolucao")
+    else:
+        chaves = ("custeio", "capital", "devolucao")
+    return [(chave, ROTULOS_NATUREZA[chave]) for chave in chaves]
 
 
 def _rotulo_alocacao(alocacao, incluir_usuario=False):
@@ -91,6 +106,7 @@ def _salvar_despesa(form, alocacao):
         alocacao_id=alocacao.id, data=form.data.data, valor=form.valor.data,
         natureza=form.natureza.data, fornecedor=form.fornecedor.data,
         cnpj_favorecido=form.cnpj_favorecido.data,
+        cpf_favorecido=form.cpf_favorecido.data,
         numero_comprovante_fiscal=form.numero_comprovante_fiscal.data,
         descricao=form.descricao.data, status="lancada",
     )
@@ -117,12 +133,18 @@ def nova_despesa(alocacao_id):
     if alocacao.projeto.status_prestacao_contas == "em_analise":
         flash("A prestação de contas deste projeto está em análise. Não é possível lançar despesas até que seja concluída.", "erro")
         return redirect(url_for("projetos.detalhe_projeto", projeto_id=alocacao.projeto_id))
+    
+    if alocacao.status != "aprovada" or alocacao.tipo_alocacao_id is None:
+        flash("Despesas só podem ser lançadas em sub-alocações aprovadas e com tipo de despesa definido.", "erro")
+        return redirect(url_for("projetos.detalhe_projeto", projeto_id=alocacao.projeto_id))
 
     form = DespesaForm()
     form.alocacao_id.choices = [(alocacao.id, _rotulo_alocacao(alocacao))]
+    form.natureza.choices = _naturezas_disponiveis(alocacao.projeto)
     if not form.is_submitted():
         form.alocacao_id.data = alocacao.id
-        form.natureza.data = alocacao.categoria
+        naturezas_validas = dict(form.natureza.choices)
+        form.natureza.data = alocacao.categoria if alocacao.categoria in naturezas_validas else form.natureza.choices[0][0]
 
     despesas = Despesa.query.filter_by(alocacao_id=alocacao.id).order_by(Despesa.data.desc()).all()
     saldo = _saldo_alocacao(alocacao)
@@ -157,13 +179,18 @@ def nova_despesa_projeto(projeto_id):
         flash("A prestação de contas deste projeto está em análise. Não é possível lançar despesas até que seja concluída.", "erro")
         return redirect(url_for("projetos.detalhe_projeto", projeto_id=projeto.id))
 
-    query_alocacoes = Alocacao.query.filter_by(projeto_id=projeto.id)
+    # Modificado: Apenas alocações aprovadas e que sejam Nível 2 (tenham tipo_alocacao_id)
+    query_alocacoes = Alocacao.query.filter(
+        Alocacao.projeto_id == projeto.id,
+        Alocacao.status == "aprovada",
+        Alocacao.tipo_alocacao_id.isnot(None)
+    )
     if current_user.papel != "administrador":
-        query_alocacoes = query_alocacoes.filter_by(usuario_id=current_user.id)
+        query_alocacoes = query_alocacoes.filter(Alocacao.usuario_id == current_user.id)
     alocacoes_disponiveis = query_alocacoes.order_by(Alocacao.id).all()
 
     if not alocacoes_disponiveis:
-        flash("Não há alocações disponíveis para lançar despesa neste projeto.", "erro")
+        flash("Não há alocações disponíveis para lançar despesa neste projeto. Certifique-se de ter sub-alocações aprovadas e com tipo definido.", "erro")
         return redirect(url_for("projetos.detalhe_projeto", projeto_id=projeto.id))
 
     saldo_projeto = _saldo_disponivel_projeto(projeto)
@@ -172,6 +199,7 @@ def nova_despesa_projeto(projeto_id):
 
     form = DespesaForm()
     form.alocacao_id.choices = [(a.id, _rotulo_alocacao(a, incluir_usuario=(current_user.papel == "administrador"))) for a in alocacoes_disponiveis]
+    form.natureza.choices = _naturezas_disponiveis(projeto)
 
     if form.validate_on_submit():
         alocacao = next((a for a in alocacoes_disponiveis if a.id == form.alocacao_id.data), None)

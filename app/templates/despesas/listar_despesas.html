@@ -18,6 +18,7 @@
             <th style="text-align:right">Comprovante</th>
         </tr>
         {% for despesa in despesas %}
+        {% set cor_despesa = {"lancada": "verde", "estornada": "cinza", "reprovada": "vermelho"}.get(despesa.status, "cinza") %}
         <tr class="linha-clicavel" data-href="{{ url_for('despesas.ver_comprovante', despesa_id=despesa.id) }}">
             <td class="mono">{{ despesa.data.strftime('%d/%m/%Y') }}</td>
             <td>{{ despesa.alocacao.usuario.nome }}</td>
@@ -27,11 +28,8 @@
             <td>{{ despesa.numero_comprovante_fiscal or "—" }}</td>
             <td class="mono">R$ {{ despesa.valor | moeda }}</td>
             <td>
-                {% if despesa.status == "lancada" %}
-                <span class="badge badge-verde"><span class="badge-dot"></span>Lançada</span>
-                {% else %}
-                <span class="badge badge-cinza"><span class="badge-dot"></span>Estornada</span>
-                {% endif %}
+                <span class="badge badge-{{ cor_despesa }}"><span class="badge-dot"></span>{{ despesa.status | rotulo }}</span>
+                {% if despesa.motivo_status %}<div class="link-muted" style="font-size:11px; margin-top:3px;">{{ despesa.motivo_status }}</div>{% endif %}
             </td>
             <td style="text-align:right"><a href="{{ url_for('despesas.ver_comprovante', despesa_id=despesa.id) }}" target="_blank" class="btn-sm impede-clique-linha">📎 Ver</a></td>
         </tr>

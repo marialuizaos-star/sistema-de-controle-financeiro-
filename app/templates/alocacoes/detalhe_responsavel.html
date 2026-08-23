@@ -1,0 +1,180 @@
+{% extends "base_app.html" %}
+{% block titulo %}{{ responsavel.nome }} — {{ projeto.nome }} — SCF PROPI{% endblock %}
+{% block conteudo %}
+{% set cor_status = {"ativo": "verde", "pendente_aprovacao": "laranja", "reprovado": "vermelho", "inativo": "cinza", "encerrado": "cinza"}.get(projeto.status, "cinza") %}
+<a href="{{ url_for('projetos.listar_projetos') }}" class="btn-link-secundario" style="margin-bottom:14px; display:inline-block; padding:6px 14px; font-size:12px;">← Projetos</a>
+
+<div class="card">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:14px;">
+        <div>
+            <div style="display:flex; gap:8px; align-items:center; margin-bottom:10px; flex-wrap:wrap;">
+                <span class="badge badge-indigo mono">{{ codigo_projeto }}</span>
+                <span class="badge badge-{{ cor_status }}"><span class="badge-dot"></span>{{ projeto.status | rotulo }}</span>
+            </div>
+            <h1 style="font-size:22px; margin:0 0 4px 0;">{{ responsavel.nome }}</h1>
+            <p class="link-muted" style="margin:0;">Alocações e despesas dentro do projeto <strong>{{ projeto.nome }}</strong></p>
+        </div>
+        <div style="display:flex; gap:10px;">
+            {% if total_alocacoes_usuario >= 2 %}
+            <a href="{{ url_for('remanejamentos.solicitar_remanejamento', projeto_id=projeto.id) }}" class="btn-sm">Remanejar verba</a>
+            {% endif %}
+            {% if projeto.status == "ativo" and projeto.status_prestacao_contas != "em_analise" %}
+            <a href="{{ url_for('despesas.nova_despesa_projeto', projeto_id=projeto.id) }}" class="btn-link-primario">+ Lançar Despesa</a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div style="display:flex; gap:16px; align-items:flex-start; flex-wrap:wrap; margin-bottom:20px;">
+    <div class="stat-grid" style="flex:2; min-width:320px; margin-bottom:0;">
+        <div class="stat-card">
+            <div class="stat-card-top"><span class="stat-label">Valor total</span><span class="stat-icon stat-icon-indigo">💰</span></div>
+            <div class="stat-value">R$ {{ valor_total | moeda }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-card-top"><span class="stat-label">Total alocado</span><span class="stat-icon stat-icon-blue">📋</span></div>
+            <div class="stat-value">R$ {{ total_alocado | moeda }}</div>
+            <div class="stat-sub">planejado</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-card-top"><span class="stat-label">Saldo alocável</span><span class="stat-icon stat-icon-green">🏦</span></div>
+            <div class="stat-value">R$ {{ saldo_alocavel | moeda }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-card-top"><span class="stat-label">Total empenhado</span><span class="stat-icon stat-icon-orange">📦</span></div>
+            <div class="stat-value">R$ {{ total_empenhado | moeda }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-card-top"><span class="stat-label">Saldo disponível</span><span class="stat-icon stat-icon-green">✅</span></div>
+            <div class="stat-value">R$ {{ saldo_disponivel | moeda }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-card-top"><span class="stat-label">Total devolvido</span><span class="stat-icon stat-icon-blue">↩️</span></div>
+            <div class="stat-value">R$ {{ total_devolvido | moeda }}</div>
+        </div>
+    </div>
+
+    <div class="card" style="flex:1; min-width:300px; max-width:360px; margin-bottom:0;">
+        <div class="stat-label" style="margin-bottom:16px;">Alocações por tipo de despesa</div>
+        {% if grafico_labels %}
+        <div style="width:100%; height:230px;">
+            <canvas id="graficoResponsavel"></canvas>
+        </div>
+        {% else %}
+        <div style="width:100%; height:230px; display:flex; align-items:center; justify-content:center;">
+            <p class="link-muted" style="text-align:center; font-size:13px; margin:0;">Ainda sem alocações por tipo de despesa para exibir aqui.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card">
+    <h2 style="margin:0;">Alocações</h2>
+    {% for alocacao in alocacoes_principais %}
+    <div style="margin-top:16px; padding-top:14px; border-top:1px solid var(--border);">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+            <div>
+                <span class="link-muted" style="font-size:11px; text-transform:uppercase; font-weight:700; letter-spacing:.03em;">Verba destinada{% if alocacao.centro %} · {{ alocacao.centro.nome }}{% endif %}</span>
+                <div class="mono" style="font-size:16px; font-weight:700; margin-top:2px;">R$ {{ alocacao.valor_alocado | moeda }} <span class="link-muted" style="font-weight:400; font-size:12px;">({{ alocacao.categoria | rotulo }})</span></div>
+            </div>
+            <div style="display:flex; gap:8px; align-items:center;">
+                <a href="{{ url_for('alocacoes.nova_sub_alocacao', alocacao_pai_id=alocacao.id) }}" class="btn-sm" style="background-color: #0ea5e9; border-color: #0ea5e9; color: white;">+ Alocação</a>
+                {% if current_user.papel == "administrador" %}
+                <a href="{{ url_for('alocacoes.editar_alocacao', alocacao_id=alocacao.id) }}" class="btn-sm">Editar</a>
+                {% endif %}
+            </div>
+        </div>
+        {% if alocacao.sub_alocacoes %}
+        <table style="margin-top:12px;">
+            <tr>
+                <th>Tipo</th>
+                <th>Categoria</th>
+                <th>Status</th>
+                <th>Valor</th>
+                <th style="text-align:right">Ações</th>
+            </tr>
+            {% for sub in alocacao.sub_alocacoes %}
+            <tr>
+                <td>{{ sub.tipo_alocacao.nome }}</td>
+                <td>{{ sub.categoria | rotulo }}</td>
+                <td>
+                    {% set cor_sub = {"aprovada": "verde", "pendente": "laranja", "reprovada": "vermelho"}.get(sub.status, "cinza") %}
+                    <span class="badge badge-{{ cor_sub }}"><span class="badge-dot"></span>{{ sub.status | capitalize }}</span>
+                    {% if sub.motivo_reprovacao %}
+                    <div class="link-muted" style="font-size:11px; margin-top:2px;">Motivo: {{ sub.motivo_reprovacao }}</div>
+                    {% endif %}
+                </td>
+                <td class="mono">R$ {{ sub.valor_alocado | moeda }}</td>
+                <td style="text-align:right">
+                    {% if current_user.papel == "administrador" or sub.status != "aprovada" %}
+                    <a href="{{ url_for('alocacoes.editar_alocacao', alocacao_id=sub.id) }}" class="btn-sm">Editar</a>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </table>
+        {% else %}
+        <p class="link-muted" style="margin-top:12px;">Nenhuma alocação lançada ainda a partir desta verba.</p>
+        {% endif %}
+    </div>
+    {% else %}
+    <p class="link-muted" style="margin-top:14px;">Nenhuma verba destinada a este responsável neste projeto.</p>
+    {% endfor %}
+</div>
+
+<div class="card">
+    <h2>Despesas Lançadas</h2>
+    <table style="margin-top:14px;">
+        <tr>
+            <th>Data</th>
+            <th>Descrição</th>
+            <th>Favorecido</th>
+            <th>Tipo</th>
+            <th>Comprovante</th>
+            <th>Valor</th>
+            <th>Status</th>
+        </tr>
+        {% for despesa in despesas %}
+        {% set cor_despesa = {"lancada": "verde", "estornada": "cinza", "reprovada": "vermelho"}.get(despesa.status, "cinza") %}
+        <tr class="linha-clicavel" data-href="{{ url_for('despesas.ver_comprovante', despesa_id=despesa.id) }}">
+            <td class="mono">{{ despesa.data.strftime('%d/%m/%Y') }}</td>
+            <td>{{ despesa.descricao or "—" }}</td>
+            <td>
+                {{ despesa.fornecedor }}
+                {% if despesa.cnpj_favorecido %}<div class="link-muted" style="font-size:11px;">{{ despesa.cnpj_favorecido }}</div>{% endif %}
+                {% if despesa.cpf_favorecido %}<div class="link-muted" style="font-size:11px;">{{ despesa.cpf_favorecido }}</div>{% endif %}
+            </td>
+            <td>{{ despesa.alocacao.tipo_alocacao.nome if despesa.alocacao.tipo_alocacao else "—" }}</td>
+            <td><a href="{{ url_for('despesas.ver_comprovante', despesa_id=despesa.id) }}" target="_blank" class="btn-sm impede-clique-linha">📎 Ver</a></td>
+            <td class="mono">R$ {{ despesa.valor | moeda }}</td>
+            <td>
+                <span class="badge badge-{{ cor_despesa }}"><span class="badge-dot"></span>{{ despesa.status | rotulo }}</span>
+                {% if despesa.motivo_status %}<div class="link-muted" style="font-size:11px; margin-top:3px;">{{ despesa.motivo_status }}</div>{% endif %}
+            </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7" class="link-muted">Nenhuma despesa lançada ainda.</td></tr>
+        {% endfor %}
+    </table>
+</div>
+
+{% if grafico_labels %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<script id="dados-grafico-responsavel" type="application/json">{{ {"labels": grafico_labels, "valores": grafico_valores} | tojson }}</script>
+<script>
+    const dados = JSON.parse(document.getElementById('dados-grafico-responsavel').textContent);
+    const ctx = document.getElementById('graficoResponsavel');
+    new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: dados.labels,
+            datasets: [{ data: dados.valores, backgroundColor: ['#4F46E5', '#16A34A', '#D97706', '#0EA5E9', '#DC2626', '#8B5CF6', '#059669', '#AF1C75'], borderWidth: 0 }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { position: 'bottom', align: 'center', labels: { font: { size: 11 }, boxWidth: 12, boxHeight: 12, padding: 10, usePointStyle: false } } }
+        }
+    });
+</script>
+{% endif %}
+{% endblock %}

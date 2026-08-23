@@ -1,8 +1,6 @@
 {% extends "base_app.html" %}
 {% block titulo %}Novo projeto — SCF PROPEG{% endblock %}
 {% block conteudo %}
-<a href="{{ url_for('projetos.listar_projetos') }}" class="btn-link-secundario" style="margin-bottom:14px; display:inline-block; padding:6px 14px; font-size:12px;">← Projetos</a>
-
 <div class="card">
     <h2>Novo projeto</h2>
     <form method="POST">
@@ -16,6 +14,10 @@
         {{ form.valor_total(type="text", inputmode="numeric", class="campo-moeda", placeholder="0,00") }}
         {% for erro in form.valor_total.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
 
+        <label>{{ form.categoria.label }}</label>
+        {{ form.categoria() }}
+        {% for erro in form.categoria.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
+
         <label>{{ form.vigencia_inicio.label }}</label>
         {{ form.vigencia_inicio() }}
         {% for erro in form.vigencia_inicio.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
@@ -27,10 +29,8 @@
         <label>{{ form.status.label }}</label>
         {{ form.status() }}
 
-        <div style="display:flex; gap:10px; align-items:center;">
-            <button type="submit">Cadastrar projeto</button>
-            <a href="{{ url_for('projetos.listar_projetos') }}" class="btn-link-secundario" style="margin-top:18px;">Cancelar</a>
-        </div>
+        <button type="submit">Cadastrar projeto</button>
     </form>
+    <p style="margin-top:14px"><a href="{{ url_for('projetos.listar_projetos') }}">Voltar</a></p>
 </div>
 {% endblock %}

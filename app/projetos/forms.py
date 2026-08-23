@@ -14,6 +14,12 @@ CATEGORIAS = [
     ("capital", "Capital"),
 ]
 
+CATEGORIAS_PROJETO = [
+    ("custeio", "Custeio"),
+    ("capital", "Capital"),
+    ("ambos", "Custeio e Capital"),
+]
+
 PAPEIS_PROJETO = [
     ("coordenador", "Coordenador"),
     ("pesquisador", "Pesquisador"),
@@ -28,6 +34,7 @@ class ProjetoForm(FlaskForm):
     valor_total = DecimalField(
         "Valor total (R$)", validators=[DataRequired(), NumberRange(min=0)], places=2
     )
+    categoria = SelectField("Categoria do projeto", choices=CATEGORIAS_PROJETO, validators=[DataRequired()])
     vigencia_inicio = DateField("Início da vigência", validators=[DataRequired()])
     vigencia_fim = DateField("Fim da vigência", validators=[DataRequired()])
     status = SelectField("Status", choices=STATUS_PROJETO, validators=[DataRequired()])
@@ -48,6 +55,8 @@ class ItemPlanoTrabalhoForm(FlaskForm):
 
 
 class SolicitarProjetoForm(FlaskForm):
+    """Mantido só por compatibilidade histórica — a rota que usa este form
+    foi desativada (decisão de 10/08/2026: só admin cria projeto e aloca)."""
     nome = StringField("Nome do projeto", validators=[DataRequired()])
     valor_total = DecimalField(
         "Valor total (R$)", validators=[DataRequired(), NumberRange(min=0)], places=2
@@ -63,7 +72,6 @@ class SolicitarProjetoForm(FlaskForm):
     def validate_itens_plano(self, campo):
         if len(campo.entries) == 0:
             raise ValidationError("Inclua ao menos um item no plano de trabalho.")
-
         total = sum((item.form.valor_alocado.data or 0) for item in campo.entries)
         if self.valor_total.data is not None and total > self.valor_total.data:
             raise ValidationError(
@@ -79,7 +87,6 @@ class ReprovarProjetoForm(FlaskForm):
 
 
 class EnviarInstrucoesForm(FlaskForm):
-    """Upload do documento de instruções do projeto, feito pelo administrador."""
     arquivo = FileField(
         "Documento de instruções (PDF, DOC ou DOCX)",
         validators=[

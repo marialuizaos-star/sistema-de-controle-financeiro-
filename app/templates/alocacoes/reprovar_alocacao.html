@@ -1,0 +1,32 @@
+{% extends "base_app.html" %}
+{% block titulo %}Reprovar Alocação — SCF PROPI{% endblock %}
+{% block conteudo %}
+<a href="{{ url_for('alocacoes.alocacoes_pendentes') }}" class="btn-link-secundario" style="margin-bottom:14px; display:inline-block; padding:6px 14px; font-size:12px;">← Voltar para Pendentes</a>
+
+<div class="card">
+    <h2>Reprovar Alocação</h2>
+    <p class="link-muted">Você está prestes a reprovar a seguinte solicitação de alocação:</p>
+    
+    <div style="background-color: #fff3f3; padding: 15px; border: 1px solid #ffcccc; border-radius: 6px; margin-bottom: 20px;">
+        <ul style="margin: 0; padding-left: 20px; font-size: 14px; color: #555;">
+            <li style="margin-bottom: 5px;"><strong>Projeto:</strong> {{ alocacao.projeto.nome }}</li>
+            <li style="margin-bottom: 5px;"><strong>Responsável:</strong> {{ alocacao.usuario.nome }}</li>
+            <li style="margin-bottom: 5px;"><strong>Tipo de despesa:</strong> {{ alocacao.tipo_alocacao.nome }}</li>
+            <li><strong>Valor solicitado:</strong> R$ {{ alocacao.valor_alocado | moeda }}</li>
+        </ul>
+    </div>
+
+    <form method="POST">
+        {{ form.hidden_tag() }}
+
+        <label>{{ form.motivo.label }}</label>
+        {{ form.motivo(rows=4, style="width: 100%;") }}
+        {% for erro in form.motivo.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
+
+        <div style="display:flex; gap:10px; align-items:center; margin-top:20px;">
+            <button type="submit" class="btn-primario" style="background-color: #dc3545; border-color: #dc3545;">Confirmar Reprovação</button>
+            <a href="{{ url_for('alocacoes.alocacoes_pendentes') }}" class="btn-link-secundario">Cancelar</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

@@ -65,6 +65,37 @@ def _validar_cnpj(form, campo):
         raise ValidationError("CNPJ inválido.")
 
 
+def _limpar_cpf(valor):
+    if valor is None:
+        return valor
+    return "".join(c for c in valor if c.isdigit())
+
+
+def _validar_cpf(form, campo):
+    """CPF é opcional — só valida se algo foi digitado."""
+    if not campo.data:
+        return
+    digitos = _limpar_cpf(campo.data)
+    if len(digitos) != 11:
+        raise ValidationError("CPF deve ter 11 dígitos.")
+    if digitos == digitos[0] * 11:
+        raise ValidationError("CPF inválido.")
+
+    # Validação do primeiro dígito
+    soma = sum(int(digitos[i]) * (10 - i) for i in range(9))
+    resto = soma % 11
+    digito1 = 0 if resto < 2 else 11 - resto
+    if digito1 != int(digitos[9]):
+        raise ValidationError("CPF inválido.")
+
+    # Validação do segundo dígito
+    soma = sum(int(digitos[i]) * (11 - i) for i in range(10))
+    resto = soma % 11
+    digito2 = 0 if resto < 2 else 11 - resto
+    if digito2 != int(digitos[10]):
+        raise ValidationError("CPF inválido.")
+
+
 class DespesaForm(FlaskForm):
     alocacao_id = SelectField("Alocação", coerce=int, validators=[DataRequired()])
     data = DateField("Data da despesa", validators=[DataRequired()])
@@ -72,6 +103,7 @@ class DespesaForm(FlaskForm):
     valor = DecimalField("Valor (R$)", validators=[DataRequired(), NumberRange(min=0)], places=2)
     fornecedor = StringField("Nome do favorecido", validators=[DataRequired(), Length(max=150)])
     cnpj_favorecido = StringField("CNPJ do favorecido", validators=[Optional(), Length(max=18), _validar_cnpj])
+    cpf_favorecido = StringField("CPF do favorecido", validators=[Optional(), Length(max=14), _validar_cpf])
     numero_comprovante_fiscal = StringField("Número do comprovante fiscal", validators=[Optional(), Length(max=50)])
     descricao = TextAreaField("Descrição", validators=[Optional(), Length(max=1000)])
     comprovante = FileField(

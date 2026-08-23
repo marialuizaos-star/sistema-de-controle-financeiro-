@@ -382,6 +382,7 @@
     }
 
     document.querySelectorAll('.campo-cnpj').forEach(function (campo) {
+        aplicarMascaraCnpj(campo);
         campo.addEventListener('input', function () {
             aplicarMascaraCnpj(campo);
         });
@@ -397,6 +398,7 @@
     }
 
     document.querySelectorAll('.campo-cpf').forEach(function (campo) {
+        aplicarMascaraCpf(campo);
         campo.addEventListener('input', function () {
             aplicarMascaraCpf(campo);
         });
@@ -415,6 +417,7 @@
     }
 
     document.querySelectorAll('.campo-telefone').forEach(function (campo) {
+        aplicarMascaraTelefone(campo);
         campo.addEventListener('input', function () {
             aplicarMascaraTelefone(campo);
         });

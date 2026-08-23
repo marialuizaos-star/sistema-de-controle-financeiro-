@@ -1,5 +1,5 @@
 {% extends "base_app.html" %}
-{% block titulo %}{{ projeto.nome }} — SCF PROPEG{% endblock %}
+{% block titulo %}{{ projeto.nome }} — SCF PROPI{% endblock %}
 {% block conteudo %}
 {% set cor_status = {"ativo": "verde", "pendente_aprovacao": "laranja", "reprovado": "vermelho", "inativo": "cinza", "encerrado": "cinza"}.get(projeto.status, "cinza") %}
 {% set pode_enviar_prestacao = projeto.criado_por_id and current_user.id == projeto.criado_por_id %}
@@ -39,20 +39,13 @@
     <div style="margin-top:16px; padding-top:14px; border-top:1px solid var(--border); display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
         {% if projeto.arquivo_instrucoes %}
         <a href="{{ url_for('projetos.ver_instrucoes', projeto_id=projeto.id) }}" target="_blank" class="btn-sm">📄 {{ projeto.instrucoes_nome_original }}</a>
-        {% if current_user.papel == "administrador" %}
         <a href="{{ url_for('projetos.enviar_instrucoes', projeto_id=projeto.id) }}" class="btn-sm btn-sm-cinza">Substituir instruções</a>
-        {% endif %}
         {% else %}
-        {% if current_user.papel == "administrador" %}
         <a href="{{ url_for('projetos.enviar_instrucoes', projeto_id=projeto.id) }}" class="btn-sm btn-sm-cinza">📄 Enviar documento de instruções</a>
-        {% else %}
-        <span class="link-muted" style="font-size:12px;">Nenhum documento de instruções enviado ainda.</span>
-        {% endif %}
         {% endif %}
     </div>
 
     {% if projeto.status == "pendente_aprovacao" %}
-        {% if current_user.papel == "administrador" %}
         <div style="display:flex; gap:10px; margin-top:16px;">
             <form method="POST" action="{{ url_for('projetos.aprovar_projeto', projeto_id=projeto.id) }}"
                   onsubmit="return confirm('Aprovar este projeto? Ele passará a ter status Ativo.');">
@@ -60,16 +53,12 @@
             </form>
             <a href="{{ url_for('projetos.reprovar_projeto', projeto_id=projeto.id) }}" class="btn-link-primario-perigo">Reprovar projeto</a>
         </div>
-        {% else %}
-        <p class="flash erro" style="margin-top:16px;">Este projeto ainda está aguardando aprovação do administrador. Você já pode cadastrar alocações, mas só poderá lançar despesas depois da aprovação.</p>
-        {% endif %}
     {% elif projeto.status == "reprovado" %}
         <p class="flash erro" style="margin-top:16px;">
             Este projeto foi reprovado{% if projeto.motivo_reprovacao %}: {{ projeto.motivo_reprovacao }}{% else %}.{% endif %}
         </p>
     {% elif projeto.status == "ativo" %}
         {% if projeto.status_prestacao_contas == "em_analise" %}
-            {% if current_user.papel == "administrador" %}
             <div style="display:flex; gap:10px; margin-top:16px;">
                 <form method="POST" action="{{ url_for('prestacoes.aprovar', projeto_id=projeto.id) }}"
                       onsubmit="return confirm('Aceitar esta prestação de contas? O projeto será encerrado.');">
@@ -77,9 +66,6 @@
                 </form>
                 <a href="{{ url_for('prestacoes.reprovar', projeto_id=projeto.id) }}" class="btn-link-primario-perigo">Reprovar prestação de contas</a>
             </div>
-            {% else %}
-            <p class="flash sucesso" style="margin-top:16px;">Prestação de contas enviada e aguardando análise do administrador.</p>
-            {% endif %}
         {% elif projeto.status_prestacao_contas == "reprovada" %}
             <p class="flash erro" style="margin-top:16px;">
                 Prestação de contas reprovada{% if projeto.motivo_reprovacao_prestacao %}: {{ projeto.motivo_reprovacao_prestacao }}{% else %}.{% endif %}
@@ -102,10 +88,9 @@
         <p class="flash sucesso" style="margin-top:16px;">✅ Prestação de contas aceita. Projeto encerrado.</p>
     {% endif %}
 
-    {% if current_user.papel == "administrador" %}
     <div style="display:flex; justify-content:space-between; align-items:center; margin-top:16px; padding-top:14px; border-top:1px solid var(--border);">
         <a href="{{ url_for('projetos.editar_projeto', projeto_id=projeto.id) }}" class="btn-sm">Editar projeto</a>
-        {% if not alocacoes %}
+        {% if not alocacoes_principais %}
         <form method="POST" action="{{ url_for('projetos.excluir_projeto', projeto_id=projeto.id) }}"
               onsubmit="return confirm('Tem certeza que deseja excluir este projeto? Essa ação não pode ser desfeita.');">
             <button type="submit" class="btn-sm btn-sm-perigo" style="margin-top:0;">Excluir projeto</button>
@@ -114,99 +99,86 @@
         <span class="link-muted">Já tem alocações — use "Encerrado" em vez de excluir</span>
         {% endif %}
     </div>
-    {% endif %}
 </div>
 
-<div style="display:flex; gap:16px; align-items:flex-start; flex-wrap:wrap; margin-bottom:20px;">
-    <div class="stat-grid" style="flex:2; min-width:320px; margin-bottom:0;">
-        <div class="stat-card">
-            <div class="stat-card-top"><span class="stat-label">Valor total</span><span class="stat-icon stat-icon-indigo">💰</span></div>
-            <div class="stat-value">R$ {{ projeto.valor_total | moeda }}</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-card-top"><span class="stat-label">Total alocado</span><span class="stat-icon stat-icon-blue">📋</span></div>
-            <div class="stat-value">R$ {{ total_alocado | moeda }}</div>
-            <div class="stat-sub">planejado</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-card-top"><span class="stat-label">Saldo alocável</span><span class="stat-icon stat-icon-green">🏦</span></div>
-            <div class="stat-value">R$ {{ saldo_nao_alocado | moeda }}</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-card-top"><span class="stat-label">Total empenhado</span><span class="stat-icon stat-icon-orange">📦</span></div>
-            <div class="stat-value">R$ {{ total_despesas | moeda }}</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-card-top"><span class="stat-label">Saldo disponível</span><span class="stat-icon stat-icon-green">✅</span></div>
-            <div class="stat-value">R$ {{ saldo_disponivel | moeda }}</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-card-top"><span class="stat-label">Execução financeira</span></div>
-            <div class="stat-value">{{ "%.1f"|format(percentual_execucao) }}%</div>
-            <div class="progress-track"><div class="progress-fill" id="barra-execucao" data-percentual="{{ percentual_execucao }}"></div></div>
-            <div class="stat-sub">do valor alocado</div>
-        </div>
+<div class="stat-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+    <div class="stat-card">
+        <div class="stat-card-top"><span class="stat-label">Valor total</span><span class="stat-icon stat-icon-indigo">💰</span></div>
+        <div class="stat-value">R$ {{ projeto.valor_total | moeda }}</div>
     </div>
+    <div class="stat-card">
+        <div class="stat-card-top"><span class="stat-label">Total alocado</span><span class="stat-icon stat-icon-blue">📋</span></div>
+        <div class="stat-value">R$ {{ total_alocado | moeda }}</div>
+        <div class="stat-sub">planejado</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-card-top"><span class="stat-label">Saldo alocável</span><span class="stat-icon stat-icon-green">🏦</span></div>
+        <div class="stat-value">R$ {{ saldo_nao_alocado | moeda }}</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-card-top"><span class="stat-label">Total empenhado</span><span class="stat-icon stat-icon-orange">📦</span></div>
+        <div class="stat-value">R$ {{ total_despesas | moeda }}</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-card-top"><span class="stat-label">Saldo disponível</span><span class="stat-icon stat-icon-green">✅</span></div>
+        <div class="stat-value">R$ {{ saldo_disponivel | moeda }}</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-card-top"><span class="stat-label">Total devolvido</span><span class="stat-icon stat-icon-blue">↩️</span></div>
+        <div class="stat-value">R$ {{ total_devolvido | moeda }}</div>
+    </div>
+</div>
 
+<div class="card">
+    <div class="stat-label" style="margin-bottom:16px;">Verba por responsável</div>
     {% if grafico_labels %}
-    <div class="card" style="flex:1; min-width:300px; max-width:360px; margin-bottom:0;">
-        <div class="stat-label" style="margin-bottom:16px;">Despesas por tipo</div>
-        <div style="width:100%; height:230px;">
-            <canvas id="graficoAlocacoes"></canvas>
-        </div>
+    <div style="width:100%; max-width:420px; height:260px; margin:0 auto;">
+        <canvas id="graficoAlocacoes"></canvas>
     </div>
+    {% else %}
+    <p class="link-muted" style="text-align:center; padding:40px 0; margin:0;">Ainda sem alocações por responsável para exibir aqui.</p>
     {% endif %}
 </div>
 
 <div class="card">
     <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
         <h2 style="margin:0;">Alocações</h2>
-        <a href="{{ url_for('alocacoes.nova_alocacao', projeto_id=projeto.id) }}" class="btn-link-primario">+ Nova Alocação</a>
+        <a href="{{ url_for('alocacoes.nova_alocacao_principal', projeto_id=projeto.id) }}" class="btn-link-primario">+ Nova Alocação</a>
     </div>
     <div style="display:flex; gap:8px; margin-top:12px; flex-wrap:wrap;">
-        {% if alocacoes|length >= 2 %}
+        {% if alocacoes_principais|length >= 2 %}
         <a href="{{ url_for('remanejamentos.solicitar_remanejamento', projeto_id=projeto.id) }}" class="btn-sm">Remanejar verba</a>
         {% endif %}
     </div>
-    <table style="margin-top:14px;">
+    <p class="link-muted" style="margin-top:12px; font-size:12px;">Clique numa linha para ver o detalhamento das alocações da pessoa.</p>
+    <table style="margin-top:8px;">
         <tr>
             <th>Usuário responsável</th>
-            <th>Papel</th>
-            <th>Tipo de alocação</th>
             <th>Categoria</th>
+            <th>Status</th>
             <th>Valor alocado</th>
             <th style="text-align:right">Ações</th>
         </tr>
-        {% for alocacao in alocacoes %}
-        <tr {% if current_user.papel == "administrador" %}class="linha-clicavel" data-href="{{ url_for('alocacoes.editar_alocacao', alocacao_id=alocacao.id) }}"{% endif %}>
-            <td>{{ alocacao.usuario.nome }}</td>
-            <td>{{ (alocacao.papel_projeto | rotulo) if alocacao.papel_projeto else "—" }}</td>
+        {% for alocacao in alocacoes_principais %}
+        <tr class="linha-clicavel" data-href="{{ url_for('alocacoes.detalhe_responsavel', projeto_id=projeto.id, usuario_id=alocacao.usuario_id) }}">
             <td>
-                {{ alocacao.tipo_alocacao.nome if alocacao.tipo_alocacao else "—" }}
-                {% if alocacao.motivo_reprovacao %}
-                <div style="margin-top:4px;"><span class="badge badge-vermelho"><span class="badge-dot"></span>Problema apontado</span></div>
-                <div class="link-muted" style="font-size:11px; margin-top:2px;">{{ alocacao.motivo_reprovacao }}</div>
-                {% endif %}
+                <strong>{{ alocacao.usuario.nome }}</strong>
+                {% if alocacao.papel_projeto %}<div class="link-muted" style="font-size:11px;">{{ alocacao.papel_projeto | rotulo }}</div>{% endif %}
+                {% if alocacao.centro %}<div class="link-muted" style="font-size:11px;">{{ alocacao.centro.nome }}</div>{% endif %}
             </td>
             <td>{{ alocacao.categoria | rotulo }}</td>
-            <td class="mono">R$ {{ alocacao.valor_alocado | moeda }}</td>
+            <td>
+                {% set cor_st = {"aprovada": "verde", "pendente": "laranja", "reprovada": "vermelho"}.get(alocacao.status, "cinza") %}
+                <span class="badge badge-{{ cor_st }}"><span class="badge-dot"></span>{{ alocacao.status | capitalize }}</span>
+            </td>
+            <td class="mono"><strong>R$ {{ alocacao.valor_alocado | moeda }}</strong></td>
             <td style="text-align:right" class="impede-clique-linha">
-                {% if current_user.papel == "administrador" %}
+                <a href="{{ url_for('alocacoes.nova_sub_alocacao', alocacao_pai_id=alocacao.id) }}" class="btn-sm" style="background-color: #0ea5e9; border-color: #0ea5e9; color: white;">+ Alocação</a>
                 <a href="{{ url_for('alocacoes.editar_alocacao', alocacao_id=alocacao.id) }}" class="btn-sm">Editar</a>
-                {% if projeto.status == "pendente_aprovacao" %}
-                    {% if alocacao.motivo_reprovacao %}
-                    <form method="POST" action="{{ url_for('alocacoes.remover_marcacao', alocacao_id=alocacao.id) }}" style="display:inline">
-                        <button type="submit" class="btn-sm btn-sm-cinza">Remover marcação</button>
-                    </form>
-                    {% else %}
-                    <a href="{{ url_for('alocacoes.marcar_problema', alocacao_id=alocacao.id) }}" class="btn-sm btn-sm-perigo">Marcar problema</a>
-                    {% endif %}
-                {% endif %}
-                {% endif %}
             </td>
         </tr>
         {% else %}
-        <tr><td colspan="6" class="link-muted">Nenhuma alocação cadastrada ainda.</td></tr>
+        <tr><td colspan="5" class="link-muted">Nenhuma alocação cadastrada ainda.</td></tr>
         {% endfor %}
     </table>
 </div>
@@ -219,7 +191,7 @@
         {% endif %}
     </div>
     {% if projeto.status in ("pendente_aprovacao", "reprovado") %}
-    <p class="link-muted" style="margin-top:14px;">O lançamento de despesas fica disponível depois que o projeto for aprovado pelo administrador.</p>
+    <p class="link-muted" style="margin-top:14px;">O lançamento de despesas fica disponível depois que o projeto for aprovado.</p>
     {% elif projeto.status_prestacao_contas == "em_analise" %}
     <p class="link-muted" style="margin-top:14px;">O lançamento de despesas fica bloqueado enquanto a prestação de contas está em análise.</p>
     {% endif %}
@@ -253,7 +225,7 @@
                 {% if despesa.motivo_status %}<div class="link-muted" style="font-size:11px; margin-top:3px;">{{ despesa.motivo_status }}</div>{% endif %}
             </td>
             <td style="text-align:right" class="impede-clique-linha">
-                {% if current_user.papel == "administrador" and despesa.status == "lancada" %}
+                {% if despesa.status == "lancada" %}
                 <div class="menu-dropdown">
                     <button type="button" class="menu-dropdown-btn" aria-label="Mais opções">☰</button>
                     <div class="menu-dropdown-lista">
@@ -271,11 +243,6 @@
 </div>
 
 <a href="{{ url_for('relatorios.relatorio_projeto', projeto_id=projeto.id) }}" class="btn-link-secundario" style="display:inline-block;">📄 Baixar prestação de contas (PDF)</a>
-
-<script>
-    var barraExecucao = document.getElementById('barra-execucao');
-    barraExecucao.style.width = barraExecucao.dataset.percentual + '%';
-</script>
 
 {% if grafico_labels %}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>

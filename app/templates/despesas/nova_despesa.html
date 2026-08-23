@@ -57,11 +57,15 @@
                 {% for erro in form.cnpj_favorecido.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
             </div>
             <div style="flex:1; min-width:200px;">
-                <label>{{ form.valor.label }}</label>
-                {{ form.valor(type="text", inputmode="numeric", class="campo-moeda", placeholder="0,00") }}
-                {% for erro in form.valor.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
+                <label>{{ form.cpf_favorecido.label }}</label>
+                {{ form.cpf_favorecido(class="campo-cpf", placeholder="000.000.000-00") }}
+                {% for erro in form.cpf_favorecido.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
             </div>
         </div>
+        
+        <label>{{ form.valor.label }}</label>
+        {{ form.valor(type="text", inputmode="numeric", class="campo-moeda", placeholder="0,00") }}
+        {% for erro in form.valor.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
 
         <label>{{ form.numero_comprovante_fiscal.label }}</label>
         {{ form.numero_comprovante_fiscal(placeholder="Ex: NF 000123") }}
@@ -99,7 +103,11 @@
         <tr class="linha-clicavel" data-href="{{ url_for('despesas.ver_comprovante', despesa_id=despesa.id) }}">
             <td class="mono">{{ despesa.data.strftime('%d/%m/%Y') }}</td>
             <td>{{ despesa.natureza | rotulo }}</td>
-            <td>{{ despesa.fornecedor }}{% if despesa.cnpj_favorecido %} <span class="link-muted">({{ despesa.cnpj_favorecido }})</span>{% endif %}</td>
+            <td>
+                {{ despesa.fornecedor }}
+                {% if despesa.cnpj_favorecido %} <span class="link-muted">({{ despesa.cnpj_favorecido }})</span>{% endif %}
+                {% if despesa.cpf_favorecido %} <span class="link-muted">({{ despesa.cpf_favorecido }})</span>{% endif %}
+            </td>
             <td>{{ despesa.numero_comprovante_fiscal or "—" }}</td>
             <td class="mono">R$ {{ despesa.valor | moeda }}</td>
             <td>

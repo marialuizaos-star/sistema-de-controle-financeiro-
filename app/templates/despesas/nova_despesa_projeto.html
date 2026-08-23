@@ -46,11 +46,15 @@
                 {% for erro in form.cnpj_favorecido.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
             </div>
             <div style="flex:1; min-width:200px;">
-                <label>{{ form.valor.label }}</label>
-                {{ form.valor(type="text", inputmode="numeric", class="campo-moeda", placeholder="0,00") }}
-                {% for erro in form.valor.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
+                <label>{{ form.cpf_favorecido.label }}</label>
+                {{ form.cpf_favorecido(class="campo-cpf", placeholder="000.000.000-00") }}
+                {% for erro in form.cpf_favorecido.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
             </div>
         </div>
+
+        <label>{{ form.valor.label }}</label>
+        {{ form.valor(type="text", inputmode="numeric", class="campo-moeda", placeholder="0,00") }}
+        {% for erro in form.valor.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
 
         <label>{{ form.numero_comprovante_fiscal.label }}</label>
         {{ form.numero_comprovante_fiscal(placeholder="Ex: NF 000123") }}
@@ -93,9 +97,17 @@
             <td>
                 {{ despesa.descricao or despesa.fornecedor }}
                 {% if despesa.descricao %}
-                <div class="link-muted" style="font-size:11px;">{{ despesa.fornecedor }}{% if despesa.cnpj_favorecido %} — {{ despesa.cnpj_favorecido }}{% endif %}</div>
-                {% elif despesa.cnpj_favorecido %}
-                <div class="link-muted" style="font-size:11px;">{{ despesa.cnpj_favorecido }}</div>
+                <div class="link-muted" style="font-size:11px;">
+                    {{ despesa.fornecedor }}
+                    {% if despesa.cnpj_favorecido %} — {{ despesa.cnpj_favorecido }}{% endif %}
+                    {% if despesa.cpf_favorecido %} — {{ despesa.cpf_favorecido }}{% endif %}
+                </div>
+                {% elif despesa.cnpj_favorecido or despesa.cpf_favorecido %}
+                <div class="link-muted" style="font-size:11px;">
+                    {% if despesa.cnpj_favorecido %}{{ despesa.cnpj_favorecido }}{% endif %}
+                    {% if despesa.cnpj_favorecido and despesa.cpf_favorecido %} | {% endif %}
+                    {% if despesa.cpf_favorecido %}{{ despesa.cpf_favorecido }}{% endif %}
+                </div>
                 {% endif %}
             </td>
             <td>{{ despesa.alocacao.tipo_alocacao.nome if despesa.alocacao.tipo_alocacao else "—" }}</td>

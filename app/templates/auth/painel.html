@@ -1,10 +1,10 @@
 {% extends "base_app.html" %}
-{% block titulo %}Início — SCF PROPEG{% endblock %}
+{% block titulo %}Início — SCF PROPI{% endblock %}
 {% block conteudo %}
 <h1 style="font-size:22px; margin:0 0 4px 0;">Bem-vindo(a), {{ current_user.nome }}</h1>
 <p class="link-muted" style="margin-top:0;">
     {% if painel_geral %}
-    Visão geral do Sistema de Controle Financeiro — PROPEG / UFAC
+    Visão geral do Sistema de Controle Financeiro — PROPI / UFAC
     {% else %}
     Perfil: {{ current_user.papel | rotulo }}
     {% endif %}
@@ -82,20 +82,24 @@
     {% if painel_geral.resumo_projetos %}
     <table>
         <tr>
-            <th>Projeto</th>
+            <th>Código</th>
+            <th>Título</th>
+            <th>Vigência</th>
             <th>Valor total</th>
-            <th>Total gasto</th>
-            <th>Saldo</th>
+            <th>Status</th>
             <th style="text-align:right">Ações</th>
         </tr>
         {% for item in painel_geral.resumo_projetos %}
-        <tr class="linha-clicavel" data-href="{{ url_for('projetos.detalhe_projeto', projeto_id=item.projeto.id) }}">
-            <td>{{ item.projeto.nome }}</td>
-            <td class="mono">R$ {{ item.valor_total | moeda }}</td>
-            <td class="mono">R$ {{ item.total_gasto | moeda }}</td>
-            <td class="mono">R$ {{ item.saldo | moeda }}</td>
+        {% set projeto = item.projeto %}
+        {% set cor = {"ativo": "verde", "pendente_aprovacao": "laranja", "reprovado": "vermelho", "inativo": "cinza", "encerrado": "cinza"}.get(projeto.status, "cinza") %}
+        <tr class="linha-clicavel" data-href="{{ url_for('projetos.detalhe_projeto', projeto_id=projeto.id) }}">
+            <td class="mono">{{ painel_geral.codigos[projeto.id] }}</td>
+            <td>{{ projeto.nome }}</td>
+            <td class="mono">{{ projeto.vigencia_inicio.strftime('%d/%m/%Y') }} → {{ projeto.vigencia_fim.strftime('%d/%m/%Y') }}</td>
+            <td class="mono">R$ {{ projeto.valor_total | moeda }}</td>
+            <td><span class="badge badge-{{ cor }}"><span class="badge-dot"></span>{{ projeto.status | rotulo }}</span></td>
             <td style="text-align:right" class="impede-clique-linha">
-                <a href="{{ url_for('projetos.detalhe_projeto', projeto_id=item.projeto.id) }}" class="btn-sm">Ver</a>
+                <a href="{{ url_for('projetos.detalhe_projeto', projeto_id=projeto.id) }}" class="btn-sm impede-clique-linha">Ver</a>
             </td>
         </tr>
         {% endfor %}
@@ -110,25 +114,27 @@
     <h2>Meus projetos</h2>
     <table>
         <tr>
-            <th>Nome</th>
+            <th>Código</th>
+            <th>Título</th>
+            <th>Vigência</th>
             <th>Valor total</th>
             <th>Status</th>
             <th style="text-align:right">Ações</th>
         </tr>
         {% for projeto in projetos %}
+        {% set cor = {"ativo": "verde", "pendente_aprovacao": "laranja", "reprovado": "vermelho", "inativo": "cinza", "encerrado": "cinza"}.get(projeto.status, "cinza") %}
         <tr class="linha-clicavel" data-href="{{ url_for('projetos.detalhe_projeto', projeto_id=projeto.id) }}">
+            <td class="mono">{{ codigos[projeto.id] }}</td>
             <td>{{ projeto.nome }}</td>
+            <td class="mono">{{ projeto.vigencia_inicio.strftime('%d/%m/%Y') }} → {{ projeto.vigencia_fim.strftime('%d/%m/%Y') }}</td>
             <td class="mono">R$ {{ projeto.valor_total | moeda }}</td>
-            <td>
-                {% set cor = {"ativo": "verde", "pendente_aprovacao": "laranja", "reprovado": "vermelho", "inativo": "cinza", "encerrado": "cinza"}.get(projeto.status, "cinza") %}
-                <span class="badge badge-{{ cor }}"><span class="badge-dot"></span>{{ projeto.status | rotulo }}</span>
-            </td>
+            <td><span class="badge badge-{{ cor }}"><span class="badge-dot"></span>{{ projeto.status | rotulo }}</span></td>
             <td style="text-align:right" class="impede-clique-linha">
-                <a href="{{ url_for('projetos.detalhe_projeto', projeto_id=projeto.id) }}" class="btn-sm">Ver</a>
+                <a href="{{ url_for('projetos.detalhe_projeto', projeto_id=projeto.id) }}" class="btn-sm impede-clique-linha">Ver</a>
             </td>
         </tr>
         {% else %}
-        <tr><td colspan="4" class="link-muted">Nenhum projeto cadastrado ainda.</td></tr>
+        <tr><td colspan="6" class="link-muted">Nenhum projeto cadastrado ainda.</td></tr>
         {% endfor %}
     </table>
     <a href="{{ url_for('projetos.listar_projetos') }}" class="btn-link-secundario" style="margin-top:14px; display:inline-block;">Ver todos os projetos</a>

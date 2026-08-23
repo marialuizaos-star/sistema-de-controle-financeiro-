@@ -52,6 +52,7 @@ def create_app(config_class=Config):
         "ativo": "Ativo", "inativo": "Inativo", "encerrado": "Encerrado",
         "pendente_aprovacao": "Pendente de aprovação", "reprovado": "Reprovado",
         "custeio": "Custeio", "capital": "Capital", "devolucao": "Devolução",
+        "ambos": "Custeio e Capital",
         "lancada": "Lançada", "estornada": "Estornada", "reprovada": "Reprovada",
         "administrador": "Administrador", "usuario_externo": "Usuário Externo",
         "pendente": "Pendente", "aprovado": "Aprovado",

@@ -1,0 +1,69 @@
+{% extends "base_app.html" %}
+{% block titulo %}Alocações Pendentes — SCF PROPI{% endblock %}
+{% block conteudo %}
+<style>
+    summary { list-style: none; }
+    summary::-webkit-details-marker { display: none; }
+    details[open] .seta { transform: rotate(180deg); }
+</style>
+
+<div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:20px;">
+    <div>
+        <h1 style="font-size:22px; margin:0 0 4px 0;">Alocações Pendentes</h1>
+        <p class="link-muted" style="margin:0;">Aguardando revisão e aprovação do administrador</p>
+    </div>
+    <a href="{{ url_for('projetos.listar_projetos') }}" class="btn-link-secundario">Ir para Projetos</a>
+</div>
+
+{% for usuario_id, dados in agrupado.items() %}
+<details class="card" style="margin-bottom:12px;">
+    <summary style="cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
+        <div>
+            <strong style="font-size:15px;">{{ dados.usuario.nome }}</strong>
+            <span class="link-muted" style="margin-left:8px;">{{ dados.alocacoes|length }} pendente{{ "s" if dados.alocacoes|length != 1 else "" }} — R$ {{ dados.total | moeda }}</span>
+        </div>
+        <span class="seta link-muted" style="transition: transform 0.15s;">▾</span>
+    </summary>
+
+    <div style="margin-top:14px; padding-top:14px; border-top:1px solid var(--border);">
+        <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px;">
+            <form method="POST" action="{{ url_for('alocacoes.aprovar_todas_pendentes', usuario_id=usuario_id) }}"
+                  onsubmit="return confirm('Aprovar todas as {{ dados.alocacoes|length }} alocações pendentes de {{ dados.usuario.nome }}?');" style="margin:0;">
+                <button type="submit" class="btn-sm" style="background-color: #28a745; border-color: #28a745; color: white; margin-top:0;">✓ Aprovar tudo de {{ dados.usuario.nome }}</button>
+            </form>
+            <a href="{{ url_for('alocacoes.reprovar_todas_pendentes', usuario_id=usuario_id) }}" class="btn-sm" style="background-color: #dc3545; border-color: #dc3545; color: white; display:inline-flex; align-items:center; text-decoration:none;">✗ Reprovar tudo de {{ dados.usuario.nome }}</a>
+        </div>
+
+        <table>
+            <tr>
+                <th>Projeto</th>
+                <th>Tipo de Despesa</th>
+                <th>Valor Solicitado</th>
+                <th style="text-align:right">Ações</th>
+            </tr>
+            {% for alocacao in dados.alocacoes %}
+            <tr>
+                <td>
+                    <a href="{{ url_for('projetos.detalhe_projeto', projeto_id=alocacao.projeto.id) }}" style="text-decoration:none; color: #0056b3;">{{ alocacao.projeto.nome }}</a>
+                </td>
+                <td>{{ alocacao.tipo_alocacao.nome }}</td>
+                <td class="mono" style="font-weight:500;">R$ {{ alocacao.valor_alocado | moeda }}</td>
+                <td style="text-align:right;">
+                    <div style="display:flex; gap:8px; justify-content:flex-end;">
+                        <form method="POST" action="{{ url_for('alocacoes.aprovar_alocacao', alocacao_id=alocacao.id) }}" style="margin:0;">
+                            <button type="submit" class="btn-sm" style="background-color: #28a745; border-color: #28a745; color: white;">Aprovar</button>
+                        </form>
+                        <a href="{{ url_for('alocacoes.reprovar_alocacao', alocacao_id=alocacao.id) }}" class="btn-sm" style="background-color: #dc3545; border-color: #dc3545; color: white; display: inline-flex; align-items: center; text-decoration: none;">Reprovar</a>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+</details>
+{% else %}
+<div class="card">
+    <p class="link-muted" style="padding:16px; text-align:center; margin:0;">Nenhuma alocação aguardando aprovação no momento.</p>
+</div>
+{% endfor %}
+{% endblock %}

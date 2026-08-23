@@ -166,12 +166,14 @@ def cadastro():
 
 def _resumo_painel_geral():
     from decimal import Decimal
+    from app.projetos.routes import _codigo_projeto
 
     projetos_ativos = Projeto.query.filter_by(status="ativo").order_by(Projeto.nome).all()
 
     total_administrado = sum((p.valor_total for p in projetos_ativos), Decimal("0"))
     total_gasto_geral = Decimal("0")
     resumo_projetos = []
+    codigos = {}
 
     for projeto in projetos_ativos:
         total_gasto_projeto = (
@@ -182,6 +184,7 @@ def _resumo_painel_geral():
         )
         total_gasto_projeto = Decimal(total_gasto_projeto)
         total_gasto_geral += total_gasto_projeto
+        codigos[projeto.id] = _codigo_projeto(projeto)
         resumo_projetos.append({
             "projeto": projeto,
             "valor_total": projeto.valor_total,
@@ -196,6 +199,7 @@ def _resumo_painel_geral():
         "total_gasto_geral": total_gasto_geral,
         "saldo_geral": saldo_geral,
         "resumo_projetos": resumo_projetos,
+        "codigos": codigos,
     }
 
 
@@ -229,8 +233,11 @@ def painel():
     if current_user.senha_provisoria:
         return redirect(url_for("auth.trocar_senha_obrigatoria"))
 
+    from app.projetos.routes import _codigo_projeto
+
     painel_geral = None
     projetos = None
+    codigos = {}
 
     if current_user.papel == "administrador":
         painel_geral = _resumo_painel_geral()
@@ -243,11 +250,12 @@ def painel():
             .limit(5)
             .all()
         )
+        codigos = {p.id: _codigo_projeto(p) for p in projetos}
 
     projetos_vencendo = _projetos_vencendo_em_breve()
 
     return render_template(
-        "auth/painel.html", projetos=projetos, painel_geral=painel_geral,
+        "auth/painel.html", projetos=projetos, painel_geral=painel_geral, codigos=codigos,
         projetos_vencendo=projetos_vencendo, hoje=date.today(),
     )
 
@@ -261,7 +269,7 @@ def recuperar_senha():
             token = usuario.gerar_token_redefinicao()
             link = url_for("auth.redefinir_senha", token=token, _external=True)
             msg = Message(
-                subject="Redefinição de senha — SCF PROPEG",
+                subject="Redefinição de senha — SCF PROPI",
                 recipients=[usuario.email],
                 body=f"Olá, {usuario.nome}.\n\nPara redefinir sua senha, acesse o link abaixo (válido por 1 hora):\n{link}\n\nSe você não solicitou isso, ignore este e-mail.",
             )

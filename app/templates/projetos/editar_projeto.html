@@ -16,6 +16,10 @@
         {{ form.valor_total(type="text", inputmode="numeric", class="campo-moeda", placeholder="0,00") }}
         {% for erro in form.valor_total.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
 
+        <label>Categoria do projeto</label>
+        <p class="link-muted" style="margin-top:4px;">{{ projeto.categoria | rotulo }} — fixada na criação, não pode ser alterada.</p>
+        <input type="hidden" name="categoria" value="{{ projeto.categoria }}">
+
         <label>{{ form.vigencia_inicio.label }}</label>
         {{ form.vigencia_inicio() }}
         {% for erro in form.vigencia_inicio.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}

@@ -21,9 +21,9 @@ class Usuario(UserMixin, db.Model):
     ativo = db.Column(db.Boolean, nullable=False, default=True)
     departamento = db.Column(db.String(150), nullable=True)
     cpf = db.Column(db.String(14), nullable=True)
+    senha_provisoria = db.Column(db.Boolean, nullable=False, default=False)
     ultimo_acesso = db.Column(db.DateTime(timezone=True), nullable=True)
     senha_hash = db.Column(db.String(255), nullable=False)
-    senha_provisoria = db.Column(db.Boolean, nullable=False, default=False)
 
     alocacoes = db.relationship("Alocacao", back_populates="usuario")
 
@@ -70,12 +70,22 @@ class Projeto(db.Model):
     vigencia_fim = db.Column(db.Date, nullable=False)
     status = db.Column(db.String(20), nullable=False, default="ativo")
 
+    # Categoria fixa do projeto inteiro (Custeio, Capital ou Ambos), escolhida
+    # na criação — todas as alocações dentro dele herdam essa categoria
+    # automaticamente, EXCETO quando é "ambos": nesse caso cada alocação
+    # principal escolhe individualmente custeio ou capital (RF01, ajustado
+    # em 19/08/2026 pra suportar projetos com as duas naturezas de verba).
+    # Nullable pra não exigir preenchimento em projetos criados antes dessa
+    # mudança.
+    categoria = db.Column(db.String(10), nullable=True)
+
     criado_por_id = db.Column(db.Integer, db.ForeignKey("usuario.id"), nullable=True)
     motivo_reprovacao = db.Column(db.Text, nullable=True)
 
     status_prestacao_contas = db.Column(db.String(20), nullable=True)
     motivo_reprovacao_prestacao = db.Column(db.Text, nullable=True)
     enviada_em_prestacao = db.Column(db.DateTime(timezone=True), nullable=True)
+
     arquivo_instrucoes = db.Column(db.String(255), nullable=True)
     instrucoes_nome_original = db.Column(db.String(255), nullable=True)
 
@@ -84,6 +94,7 @@ class Projeto(db.Model):
 
     STATUS_VALIDOS = ("ativo", "inativo", "encerrado", "pendente_aprovacao", "reprovado")
     STATUS_PRESTACAO_VALIDOS = ("em_analise", "aceita", "reprovada")
+    CATEGORIAS_VALIDAS = ("custeio", "capital", "ambos")
 
     __table_args__ = (
         db.CheckConstraint("valor_total >= 0", name="ck_projeto_valor_total_positivo"),
@@ -95,6 +106,10 @@ class Projeto(db.Model):
             "status_prestacao_contas IS NULL OR status_prestacao_contas IN "
             "('em_analise', 'aceita', 'reprovada')",
             name="ck_projeto_status_prestacao_contas_valido",
+        ),
+        db.CheckConstraint(
+            "categoria IS NULL OR categoria IN ('custeio', 'capital', 'ambos')",
+            name="ck_projeto_categoria_valida",
         ),
     )
 
@@ -109,15 +124,26 @@ class TipoAlocacao(db.Model):
     nome = db.Column(db.String(100), nullable=False, unique=True)
     ativo = db.Column(db.Boolean, nullable=False, default=True)
     categoria_padrao = db.Column(db.String(10), nullable=True)
-
-    # Texto livre exibido como alerta ao lançar despesa desse tipo — ex:
-    # "Obrigatório anexar Relatório de Viagem ou Declaração de Diárias."
-    # (novo RF — reunião de 02/08/2026). Opcional: se em branco, nenhum
-    # aviso extra aparece além do upload de comprovante padrão.
     documentos_obrigatorios = db.Column(db.Text, nullable=True)
 
     def __repr__(self):
         return f"<TipoAlocacao {self.id} {self.nome}>"
+
+
+class Centro(db.Model):
+    __tablename__ = "centro"
+
+    # Cadastro simples de centros/departamentos/subprojetos que o admin
+    # mantém e reaproveita ao criar alocações principais — evita digitar o
+    # nome toda vez e permite que o mesmo professor/coordenador apareça
+    # vinculado a centros diferentes em projetos diferentes (decisão de
+    # 19/08/2026).
+    id = db.Column(db.Integer, primary_key=True)
+    nome = db.Column(db.String(150), nullable=False, unique=True)
+    ativo = db.Column(db.Boolean, nullable=False, default=True)
+
+    def __repr__(self):
+        return f"<Centro {self.id} {self.nome}>"
 
 
 class Alocacao(db.Model):
@@ -129,17 +155,47 @@ class Alocacao(db.Model):
     tipo_alocacao_id = db.Column(db.Integer, db.ForeignKey("tipo_alocacao.id"), nullable=True)
     categoria = db.Column(db.String(10), nullable=False)
     valor_alocado = db.Column(db.Numeric(12, 2), nullable=False)
-
     papel_projeto = db.Column(db.String(20), nullable=True)
     motivo_reprovacao = db.Column(db.Text, nullable=True)
+
+    # Só usado em alocações principais (Nível 1): identifica o centro/
+    # subprojeto pro qual a verba foi destinada dentro do projeto maior.
+    # Opcional — nem todo projeto precisa dessa granularidade.
+    centro_id = db.Column(db.Integer, db.ForeignKey("centro.id"), nullable=True)
+
+    # Estrutura em 2 níveis (RF01, decisão de 10/08/2026):
+    # - Nível 1 ("alocação principal"): alocacao_pai_id é None. Representa a
+    #   verba destinada a um usuário específico dentro do projeto — só o
+    #   admin cria, e nasce sem tipo_alocacao_id (só o valor bruto).
+    # - Nível 2 ("sub-alocação"): alocacao_pai_id aponta pra uma alocação
+    #   nível 1. Representa como o dono da alocação principal decidiu
+    #   dividir a própria verba por tipo de despesa — só o dono da alocação
+    #   principal cria, sempre com tipo_alocacao_id preenchido.
+    # Registros de antes dessa mudança já têm tipo_alocacao_id preenchido,
+    # então continuam funcionando como sub-alocações válidas sem precisar de
+    # nenhuma migração de dados.
+    #
+    # A categoria de cada alocação individual é sempre custeio OU capital
+    # (nunca "ambos" — essa opção existe só no projeto). Quando o projeto é
+    # "ambos", quem cria a alocação principal escolhe qual das duas; nos
+    # outros casos ela herda automaticamente a categoria única do projeto.
+    alocacao_pai_id = db.Column(db.Integer, db.ForeignKey("alocacao.id"), nullable=True)
+
+    # aprovada = pode receber despesa (se tiver tipo) ou já é uma alocação
+    # principal liberada; pendente = sub-alocação aguardando o admin revisar;
+    # reprovada = negada, com motivo em motivo_reprovacao.
+    status = db.Column(db.String(20), nullable=False, default="aprovada")
 
     projeto = db.relationship("Projeto", back_populates="alocacoes")
     usuario = db.relationship("Usuario", back_populates="alocacoes")
     tipo_alocacao = db.relationship("TipoAlocacao")
+    centro = db.relationship("Centro")
     despesas = db.relationship("Despesa", back_populates="alocacao")
+    pai = db.relationship("Alocacao", remote_side=[id], backref="sub_alocacoes")
 
     CATEGORIAS_VALIDAS = ("custeio", "capital")
     PAPEIS_PROJETO_VALIDOS = ("coordenador", "pesquisador", "bolsista", "tecnico", "colaborador")
+    STATUS_VALIDOS = ("aprovada", "pendente", "reprovada")
 
     __table_args__ = (
         db.CheckConstraint("valor_alocado >= 0", name="ck_alocacao_valor_positivo"),
@@ -150,6 +206,10 @@ class Alocacao(db.Model):
             "papel_projeto IS NULL OR papel_projeto IN "
             "('coordenador', 'pesquisador', 'bolsista', 'tecnico', 'colaborador')",
             name="ck_alocacao_papel_projeto_valido",
+        ),
+        db.CheckConstraint(
+            "status IN ('aprovada', 'pendente', 'reprovada')",
+            name="ck_alocacao_status_valido",
         ),
     )
 
@@ -171,6 +231,7 @@ class Despesa(db.Model):
     natureza = db.Column(db.String(12), nullable=False, default="custeio")
 
     cnpj_favorecido = db.Column(db.String(18), nullable=True)
+    cpf_favorecido = db.Column(db.String(14), nullable=True)
     numero_comprovante_fiscal = db.Column(db.String(50), nullable=True)
 
     motivo_status = db.Column(db.Text, nullable=True)
@@ -268,6 +329,7 @@ class Notificacao(db.Model):
 
     def __repr__(self):
         return f"<Notificacao {self.id} usuario={self.usuario_id} lida={self.lida}>"
+
 
 class DocumentoModelo(db.Model):
     __tablename__ = "documento_modelo"

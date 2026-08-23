@@ -1,0 +1,50 @@
+{% extends "base_app.html" %}
+{% block titulo %}Nova Alocação — SCF PROPI{% endblock %}
+{% block conteudo %}
+<a href="{{ url_for('projetos.detalhe_projeto', projeto_id=projeto.id) }}" class="btn-link-secundario" style="margin-bottom:14px; display:inline-block; padding:6px 14px; font-size:12px;">← Voltar para Projeto</a>
+
+<div class="card">
+    <h2>Nova Alocação</h2>
+    <p class="link-muted">Destinar verba bruta para um usuário dentro do projeto <strong>{{ projeto.nome }}</strong>.</p>
+    
+    <div style="background-color: #f8f9fa; padding: 12px; border-radius: 6px; margin-bottom: 20px;">
+        <span style="font-size: 14px; color: #555;">Saldo disponível no projeto:</span><br>
+        <strong style="font-size: 18px;">R$ {{ saldo | moeda }}</strong>
+    </div>
+
+    <form method="POST">
+        {{ form.hidden_tag() }}
+
+        <label>{{ form.usuario_id.label }}</label>
+        {{ form.usuario_id() }}
+        {% for erro in form.usuario_id.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
+
+        <label>{{ form.papel_projeto.label }}</label>
+        {{ form.papel_projeto() }}
+        <p class="link-muted" style="margin-top:4px;">A mesma pessoa pode ter papéis diferentes em projetos diferentes — por isso perguntamos aqui, não no cadastro do projeto.</p>
+
+        <label>{{ form.centro_id.label }}</label>
+        {{ form.centro_id() }}
+        <p class="link-muted" style="margin-top:4px;">Identifica o centro/projeto pro qual essa verba vai — útil quando a mesma pessoa está em vários projetos. <a href="{{ url_for('alocacoes.gerenciar_centros') }}">Gerenciar centros / projetos</a>.</p>
+
+        {% if projeto_exige_categoria %}
+        <label>{{ form.categoria.label }}</label>
+        {{ form.categoria() }}
+        {% for erro in form.categoria.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
+        <p class="link-muted" style="margin-top:4px;">Este projeto tem verba de Custeio e Capital — escolha a qual categoria esta alocação pertence.</p>
+        {% else %}
+        {{ form.categoria(style="display:none") }}
+        <p class="link-muted" style="margin-top:12px;">Categoria: <strong>{{ projeto.categoria | rotulo }}</strong> — herdada automaticamente do projeto.</p>
+        {% endif %}
+
+        <label>{{ form.valor_alocado.label }}</label>
+        {{ form.valor_alocado(type="text", inputmode="numeric", class="campo-moeda", placeholder="0,00") }}
+        {% for erro in form.valor_alocado.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
+
+        <div style="display:flex; gap:10px; align-items:center; margin-top:20px;">
+            <button type="submit" class="btn-primario">Criar Alocação</button>
+            <a href="{{ url_for('projetos.detalhe_projeto', projeto_id=projeto.id) }}" class="btn-link-secundario">Cancelar</a>
+        </div>
+    </form>
+</div>
+{% endblock %}
