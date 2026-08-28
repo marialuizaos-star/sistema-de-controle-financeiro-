@@ -2,76 +2,252 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block titulo %}SCF PROPEG{% endblock %}</title>
+
     <style>
-        :root {
-            --navy: #2B3A55;
-            --accent: #4F46E5;
-            --accent-soft: #EEF0FF;
-            --ink: #1E293B;
-            --muted: #64748B;
-            --border: #E2E8F0;
-            --danger: #DC2626;
-            --danger-soft: #FEF2F2;
-            --success: #16A34A;
-        }
-        * { box-sizing: border-box; }
-        body {
+        * {
+            box-sizing: border-box;
             margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: #f2f3f4;
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background: radial-gradient(circle at top left, #EEF0FF 0%, #F7F8FC 45%, #EAF0FB 100%);
-            color: var(--ink);
+            padding: 20px;
         }
-        .auth-card {
-            background: #fff;
-            width: 380px;
-            max-width: 90vw;
-            border-radius: 20px;
-            box-shadow: 0 20px 45px rgba(43,58,85,0.12);
-            padding: 36px 32px 32px;
-        }
-        .auth-brand { display:flex; align-items:center; gap:10px; justify-content:center; margin-bottom: 4px; }
-        .auth-brand .logo {
-            width: 42px; height: 42px; border-radius: 10px;
-            background: #fff; border: 1px solid var(--border);
-            display:flex; align-items:center; justify-content:center;
-            overflow: hidden; padding: 3px; flex-shrink: 0;
-        }
-        .auth-brand .logo img { width: 100%; height: 100%; object-fit: contain; }
-        .auth-brand-text { line-height: 1.2; }
-        .auth-brand span { font-weight: 700; font-size: 15px; color: var(--navy); display: block; }
-        .auth-brand small { font-size: 11px; color: var(--muted); display: block; }
-        h2 { text-align:center; font-size: 20px; margin: 22px 0 22px 0; color: var(--navy); }
-        .flash { padding: 10px 14px; border-radius: 10px; margin-bottom: 14px; font-size: 13px; }
-        .flash.erro { background: var(--danger-soft); color: var(--danger); }
-        .flash.sucesso { background: #ECFDF5; color: var(--success); }
-        label { display: block; margin-top: 14px; font-weight: 600; font-size: 13px; color: var(--ink); }
-        input { width: 100%; padding: 10px 12px; margin-top: 5px; box-sizing: border-box; border: 1px solid var(--border); border-radius: 10px; font-size: 14px; }
-        input:focus { outline: none; border-color: var(--accent); }
-        button { width:100%; margin-top: 22px; padding: 11px 16px; background: var(--accent); color: white; border: none; border-radius: 999px; cursor: pointer; font-weight: 600; font-size: 14px; }
-        button:disabled { opacity: 0.65; cursor: not-allowed; }
-        .erros-campo { color: var(--danger); font-size: 12px; margin-top: 4px; }
-        .auth-links { text-align: center; margin-top: 16px; font-size: 13px; }
-        .auth-links a { color: var(--accent); text-decoration: none; font-weight: 600; }
-        .checkbox-row { display:flex; align-items:center; gap:8px; margin-top:14px; font-size:13px; }
-        .checkbox-row input { width:auto; margin-top:0; }
 
-        .btn-link-secundario {
-            display: inline-block; text-decoration: none; padding: 9px 18px; border-radius: 999px;
-            background: #fff; color: var(--ink); border: 1px solid var(--border);
-            font-size: 13px; font-weight: 600; cursor: pointer;
+        /* Card gradiente */
+        .auth-card {
+            background: linear-gradient(135deg, #0d9488 0%, #1e40af 50%, #4c1d95 100%);
+            width: 380px;
+            max-width: 100%;
+            border-radius: 36px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.18);
+            padding: 40px 32px 36px;
+            color: #ffffff;
         }
-        .btn-link-secundario:hover { background: #F1F5F9; }
-        .btn-link-primario {
-            display: inline-block; text-decoration: none; padding: 10px 22px; border-radius: 999px;
-            background: var(--accent); color: #fff; border: none;
-            font-size: 14px; font-weight: 600; cursor: pointer;
+
+        /* Topo: Logo e Marca */
+        .auth-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            justify-content: center;
+            margin-bottom: 20px;
         }
-        .btn-link-primario:hover { background: #4338CA; }
+
+        .auth-brand .logo {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            background: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            padding: 4px;
+            flex-shrink: 0;
+        }
+
+        .auth-brand .logo img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .auth-brand-text {
+            line-height: 1.2;
+        }
+
+        .auth-brand-text span {
+            font-weight: 700;
+            font-size: 15px;
+            color: #ffffff;
+            display: block;
+        }
+
+        .auth-brand-text small {
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.75);
+            display: block;
+        }
+
+        /* Título */
+        h2 {
+            text-align: center;
+            font-size: 32px;
+            font-weight: 600;
+            margin-bottom: 24px;
+            color: #ffffff;
+            letter-spacing: -0.5px;
+        }
+
+        /* Alertas Flash */
+        .flash {
+            padding: 10px 14px;
+            border-radius: 12px;
+            margin-bottom: 16px;
+            font-size: 13px;
+            text-align: center;
+        }
+
+        .flash.erro {
+            background: rgba(239, 68, 68, 0.25);
+            color: #fecaca;
+            border: 1px solid rgba(239, 68, 68, 0.4);
+        }
+
+        .flash.sucesso {
+            background: rgba(34, 197, 94, 0.25);
+            color: #bbf7d0;
+            border: 1px solid rgba(34, 197, 94, 0.4);
+        }
+
+        /* Labels e Inputs principais */
+        label {
+            display: block;
+            margin-top: 16px;
+            font-size: 14px;
+            font-weight: 400;
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        input[type="text"],
+        input[type="email"],
+        input[type="password"] {
+            width: 100%;
+            padding: 12px 18px;
+            margin-top: 6px;
+            background-color: #d1d5db;
+            border: none;
+            border-radius: 999px;
+            font-size: 14px;
+            color: #1f2937;
+            outline: none;
+            transition: background 0.2s, box-shadow 0.2s;
+        }
+
+        input[type="text"]:focus,
+        input[type="email"]:focus,
+        input[type="password"]:focus {
+            background-color: #e5e7eb;
+            box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.4);
+        }
+
+        /* --- Checkbox Redondo & Manter Conectado --- */
+        .checkbox-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 18px;
+            margin-bottom: 4px;
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.9);
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .checkbox-row label {
+            margin-top: 0;
+            font-size: 13px;
+            cursor: pointer;
+            color: rgba(255, 255, 255, 0.9);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Estilização nativa com aparência circular */
+        input[type="checkbox"] {
+            appearance: none;
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background-color: #d1d5db;
+            border: 2px solid transparent;
+            cursor: pointer;
+            outline: none;
+            display: inline-grid;
+            place-content: center;
+            transition: all 0.2s ease;
+            margin: 0;
+            flex-shrink: 0;
+        }
+
+        input[type="checkbox"]:hover {
+            background-color: #e5e7eb;
+        }
+
+        input[type="checkbox"]:checked {
+            background-color: #38bdf8;
+            border-color: #ffffff;
+        }
+
+        input[type="checkbox"]:checked::before {
+            content: "";
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background-color: #ffffff;
+        }
+
+        /* Botão Login */
+        button {
+            width: 100%;
+            margin-top: 24px;
+            padding: 14px 20px;
+            background: #38bdf8;
+            color: #ffffff;
+            border: none;
+            border-radius: 999px;
+            cursor: pointer;
+            font-weight: 700;
+            font-size: 18px;
+            transition: background 0.2s, transform 0.1s;
+        }
+
+        button:hover {
+            background: #0284c7;
+        }
+
+        button:active {
+            transform: scale(0.99);
+        }
+
+        button:disabled {
+            opacity: 0.65;
+            cursor: not-allowed;
+        }
+
+        .erros-campo {
+            color: #fca5a5;
+            font-size: 12px;
+            margin-top: 4px;
+            padding-left: 12px;
+        }
+
+        .auth-links {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 13px;
+        }
+
+        .auth-links a {
+            color: #7dd3fc;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .auth-links a:hover {
+            text-decoration: underline;
+        }
     </style>
 </head>
 <body>
@@ -85,11 +261,13 @@
             <small>UFAC — Pró-Reitoria de Pesquisa</small>
         </div>
     </div>
+
     {% with mensagens = get_flashed_messages(with_categories=true) %}
         {% for categoria, mensagem in mensagens %}
             <div class="flash {{ categoria }}">{{ mensagem }}</div>
         {% endfor %}
     {% endwith %}
+
     {% block conteudo %}{% endblock %}
 </div>
 

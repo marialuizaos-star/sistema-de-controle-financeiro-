@@ -1,28 +1,385 @@
 {% extends "base_app.html" %}
 {% block titulo %}Ajuda — SCF PROPEG{% endblock %}
+
 {% block conteudo %}
-<h1 style="font-size:22px; margin:0 0 4px 0;">Central de Ajuda</h1>
-<p class="link-muted" style="margin:0 0 20px 0;">Orientações básicas de uso do sistema.</p>
+<style>
+    .help-header {
+        margin-bottom: 24px;
+    }
+    
+    .search-faq-container {
+        position: relative;
+        margin: 18px 0 26px;
+    }
+    
+    .search-faq-input {
+        width: 100%;
+        padding: 14px 20px 14px 44px;
+        background: #FFFFFF;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        font-size: 14px;
+        color: var(--ink);
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+        transition: all 0.2s;
+    }
+    
+    .search-faq-input:focus {
+        border-color: var(--accent-glow);
+        box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.2);
+        outline: none;
+    }
 
-<div class="card">
-    <h2>Para pesquisadores</h2>
-    <p><strong>Solicitar um projeto novo:</strong> vá em "Projetos" → "+ Solicitar novo projeto". Preencha os dados e o plano de trabalho (o que pretende gastar, item por item) na mesma tela. O pedido é enviado direto pro administrador aprovar.</p>
-    <p><strong>Lançar uma despesa:</strong> dentro do projeto, clique em "+ Lançar Despesa". Escolha a alocação correspondente, preencha os dados e anexe o comprovante (PDF, JPG ou PNG). Alguns tipos de despesa mostram um aviso sobre documentos extras exigidos — leia com atenção antes de enviar.</p>
-    <p><strong>Enviar a prestação de contas:</strong> quando o projeto estiver com os gastos concluídos, clique em "Enviar prestação de contas" na tela do projeto. Depois disso não é mais possível lançar novas despesas até o administrador concluir a análise.</p>
-    <p><strong>Notificações:</strong> o sino no topo da tela avisa quando seu projeto, remanejamento ou prestação de contas for aprovado, reprovado, ou tiver algum problema apontado pelo administrador.</p>
+    .search-faq-icon {
+        position: absolute;
+        left: 18px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 14px;
+        color: var(--muted);
+        pointer-events: none;
+    }
+
+    /* Cards de Categoria com destaque superior sutil */
+    .faq-category-card {
+        background: var(--card);
+        border-radius: 20px;
+        border: 1px solid rgba(226, 232, 240, 0.8);
+        padding: 24px;
+        margin-bottom: 22px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03);
+        border-top: 4px solid transparent;
+    }
+
+    .faq-pesquisadores {
+        border-top-color: #0d9488;
+    }
+
+    .faq-administradores {
+        border-top-color: #2563eb;
+    }
+
+    .faq-duvidas {
+        border-top-color: #7c3aed;
+    }
+
+    .faq-category-title {
+        font-size: 17px;
+        font-weight: 700;
+        margin: 0 0 16px 0;
+        letter-spacing: -0.3px;
+    }
+
+    .title-pesquisadores {
+        color: #0d9488;
+    }
+
+    .title-administradores {
+        color: #1d4ed8;
+    }
+
+    .title-duvidas {
+        color: #6d28d9;
+    }
+
+    /* Itens expansíveis (Accordion) */
+    .faq-item {
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        margin-bottom: 10px;
+        background: #FFFFFF;
+        overflow: hidden;
+        transition: all 0.2s ease;
+    }
+
+    .faq-item:hover {
+        border-color: #cbd5e1;
+    }
+
+    .faq-question {
+        width: 100%;
+        text-align: left;
+        padding: 14px 18px;
+        background: none;
+        border: none;
+        margin: 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--ink);
+        border-radius: 0;
+    }
+
+    .faq-question:hover {
+        background: #f8fafc;
+        color: var(--accent);
+    }
+
+    .faq-arrow {
+        font-size: 11px;
+        color: var(--muted);
+        transition: transform 0.2s;
+    }
+
+    .faq-item.open .faq-arrow {
+        transform: rotate(180deg);
+        color: var(--accent);
+    }
+
+    .faq-answer {
+        padding: 0 18px;
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.25s ease-out, padding 0.25s ease-out;
+        font-size: 13.5px;
+        color: #475569;
+        line-height: 1.6;
+        border-top: 1px solid transparent;
+        background: #fdfdfd;
+    }
+
+    .faq-item.open .faq-answer {
+        padding: 12px 18px 16px;
+        border-top-color: #f1f5f9;
+    }
+
+    .faq-answer ul {
+        margin: 8px 0 0;
+        padding-left: 20px;
+    }
+
+    .faq-answer li {
+        margin-bottom: 4px;
+    }
+
+    /* Card de Suporte PROPEG */
+    .support-card {
+        background: var(--gradiente-header);
+        border-radius: 20px;
+        padding: 24px 28px;
+        color: #ffffff;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 16px;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        margin-top: 28px;
+    }
+
+    .support-btn {
+        background: #ffffff;
+        color: #0f172a;
+        text-decoration: none;
+        font-weight: 700;
+        font-size: 13px;
+        padding: 10px 22px;
+        border-radius: 999px;
+        transition: all 0.2s;
+        display: inline-flex;
+        align-items: center;
+    }
+
+    .support-btn:hover {
+        background: #f1f5f9;
+        transform: translateY(-1px);
+    }
+</style>
+
+<div class="help-header">
+    <h1 style="font-size: 24px; font-weight: 700; margin: 0 0 4px 0; color: var(--ink);">Central de Ajuda</h1>
+    <p class="link-muted" style="margin: 0;">Orientações e respostas básicas sobre o uso do SCF PROPEG.</p>
 </div>
 
-<div class="card">
-    <h2>Para administradores</h2>
-    <p><strong>Pendências:</strong> o menu ☰ ao lado de "+ Novo Projeto" reúne projetos pendentes de aprovação, remanejamentos pendentes e prestações de contas pendentes.</p>
-    <p><strong>Revisar um projeto:</strong> ao abrir um projeto pendente, é possível marcar problemas em alocações específicas (com motivo) antes de aprovar ou reprovar o projeto como um todo.</p>
-    <p><strong>Revisar despesas:</strong> "Estornar" desfaz uma despesa (o valor volta pro saldo); "Reprovar" marca a despesa como inválida. As duas exigem que você explique o motivo, que o pesquisador recebe por notificação.</p>
-    <p><strong>Cadastro de usuários:</strong> em "Usuários" → "+ Novo Usuário". A senha definida ali é provisória — a pessoa será obrigada a trocá-la no primeiro acesso.</p>
+<!-- Barra de Busca -->
+<div class="search-faq-container">
+    <span class="search-faq-icon"></span>
+    <input type="text" id="faqSearchInput" class="search-faq-input" placeholder="Digite para buscar (ex: despesa, prestação, alocado, senha)...">
 </div>
 
-<div class="card">
-    <h2>Dúvidas frequentes</h2>
-    <p><strong>Por que não consigo lançar despesa?</strong> O projeto precisa estar com status "Ativo" e sem prestação de contas em análise. Se a alocação certa ainda não existe, peça pro administrador criar (ou crie, se você tiver essa opção) antes de lançar a despesa.</p>
-    <p><strong>Diferença entre "alocado" e "gasto":</strong> alocado é o que foi planejado gastar em cada categoria; gasto é o valor real das despesas já lançadas. O saldo do projeto é sempre baseado no que foi de fato gasto.</p>
+<div id="faqContainer">
+    <!-- Bloco 1: Para Pesquisadores -->
+    <div class="faq-category-card faq-pesquisadores">
+        <h2 class="faq-category-title title-pesquisadores">Para pesquisadores</h2>
+
+        <div class="faq-item">
+            <button type="button" class="faq-question">
+                <span>Solicitar um projeto novo</span>
+                <span class="faq-arrow">▼</span>
+            </button>
+            <div class="faq-answer">
+                Vá em <strong>"Projetos"</strong> &rarr; <strong>"+ Solicitar novo projeto"</strong>. Preencha os dados e o plano de trabalho (o que pretende gastar, item por item) na mesma tela. O pedido é enviado direto pro administrador aprovar.
+            </div>
+        </div>
+
+        <div class="faq-item">
+            <button type="button" class="faq-question">
+                <span>Lançar uma despesa</span>
+                <span class="faq-arrow">▼</span>
+            </button>
+            <div class="faq-answer">
+                Dentro do projeto, clique em <strong>"+ Lançar Despesa"</strong>. Escolha a alocação correspondente, preencha os dados e anexe o comprovante (PDF, JPG ou PNG). Alguns tipos de despesa mostram um aviso sobre documentos extras exigidos — leia com atenção antes de enviar.
+            </div>
+        </div>
+
+        <div class="faq-item">
+            <button type="button" class="faq-question">
+                <span>Enviar a prestação de contas</span>
+                <span class="faq-arrow">▼</span>
+            </button>
+            <div class="faq-answer">
+                Quando o projeto estiver com os gastos concluídos, clique em <strong>"Enviar prestação de contas"</strong> na tela do projeto. Depois disso não é mais possível lançar novas despesas até o administrador concluir a análise.
+            </div>
+        </div>
+
+        <div class="faq-item">
+            <button type="button" class="faq-question">
+                <span>Notificações</span>
+                <span class="faq-arrow">▼</span>
+            </button>
+            <div class="faq-answer">
+                O sino no topo da tela avisa quando seu projeto, remanejamento ou prestação de contas for aprovado, reprovado, ou tiver algum problema apontado pelo administrador.
+            </div>
+        </div>
+    </div>
+
+    <!-- Bloco 2: Para Administradores -->
+    <div class="faq-category-card faq-administradores">
+        <h2 class="faq-category-title title-administradores">Para administradores</h2>
+
+        <div class="faq-item">
+            <button type="button" class="faq-question">
+                <span>Pendências</span>
+                <span class="faq-arrow">▼</span>
+            </button>
+            <div class="faq-answer">
+                O menu <strong>☰</strong> ao lado de <strong>"+ Novo Projeto"</strong> reúne projetos pendentes de aprovação, remanejamentos pendentes e prestações de contas pendentes.
+            </div>
+        </div>
+
+        <div class="faq-item">
+            <button type="button" class="faq-question">
+                <span>Revisar um projeto</span>
+                <span class="faq-arrow">▼</span>
+            </button>
+            <div class="faq-answer">
+                Ao abrir um projeto pendente, é possível marcar problemas em alocações específicas (com motivo) antes de aprovar ou reprovar o projeto como um todo.
+            </div>
+        </div>
+
+        <div class="faq-item">
+            <button type="button" class="faq-question">
+                <span>Revisar despesas</span>
+                <span class="faq-arrow">▼</span>
+            </button>
+            <div class="faq-answer">
+                <ul>
+                    <li><strong>"Estornar":</strong> desfaz uma despesa (o valor volta pro saldo).</li>
+                    <li><strong>"Reprovar":</strong> marca a despesa como inválida.</li>
+                </ul>
+                As duas ações exigem que você explique o motivo, que o pesquisador recebe por notificação.
+            </div>
+        </div>
+
+        <div class="faq-item">
+            <button type="button" class="faq-question">
+                <span>Cadastro de usuários</span>
+                <span class="faq-arrow">▼</span>
+            </button>
+            <div class="faq-answer">
+                Em <strong>"Usuários"</strong> &rarr; <strong>"+ Novo Usuário"</strong>. A senha definida ali é provisória — a pessoa será obrigada a trocá-la no primeiro acesso.
+            </div>
+        </div>
+    </div>
+
+    <!-- Bloco 3: Dúvidas Frequentes -->
+    <div class="faq-category-card faq-duvidas">
+        <h2 class="faq-category-title title-duvidas">Dúvidas frequentes</h2>
+
+        <div class="faq-item">
+            <button type="button" class="faq-question">
+                <span>Por que não consigo lançar despesa?</span>
+                <span class="faq-arrow">▼</span>
+            </button>
+            <div class="faq-answer">
+                O projeto precisa estar com status <strong>"Ativo"</strong> e sem prestação de contas em análise. Se a alocação certa ainda não existe, peça pro administrador criar (ou crie, se você tiver essa opção) antes de lançar a despesa.
+            </div>
+        </div>
+
+        <div class="faq-item">
+            <button type="button" class="faq-question">
+                <span>Diferença entre "alocado" e "gasto"</span>
+                <span class="faq-arrow">▼</span>
+            </button>
+            <div class="faq-answer">
+                <strong>Alocado</strong> é o que foi planejado gastar em cada categoria; <strong>gasto</strong> é o valor real das despesas já lançadas. O saldo do projeto é sempre baseado no que foi de fato gasto.
+            </div>
+        </div>
+    </div>
 </div>
+
+<!-- Card de Contato Suporte -->
+<div class="support-card">
+    <div>
+        <h4 style="font-size: 16px; font-weight: 700; margin: 0 0 4px 0;">Ainda precisa de ajuda?</h4>
+        <p style="font-size: 13px; color: rgba(255, 255, 255, 0.8); margin: 0;">Entre em contato com o setor financeiro da PROPEG / UFAC.</p>
+    </div>
+    <a href="https://mail.google.com/mail/?view=cm&fs=1&to=propeg@ufac.br&su=Dúvida%20-%20SCF%20PROPEG" target="_blank" class="support-btn">
+    <span>Falar com a PROPEG</span>
+</a>
+    </a>
+</div>
+
+<script>
+    // Accordion
+    document.querySelectorAll('.faq-question').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var item = this.parentElement;
+            var answer = item.querySelector('.faq-answer');
+            
+            if (item.classList.contains('open')) {
+                item.classList.remove('open');
+                answer.style.maxHeight = null;
+            } else {
+                item.classList.add('open');
+                answer.style.maxHeight = answer.scrollHeight + 30 + 'px';
+            }
+        });
+    });
+
+    // Busca rápida
+    var searchInput = document.getElementById('faqSearchInput');
+    searchInput.addEventListener('input', function() {
+        var filter = this.value.toLowerCase().trim();
+        var cards = document.querySelectorAll('.faq-category-card');
+
+        cards.forEach(function(card) {
+            var items = card.querySelectorAll('.faq-item');
+            var cardHasMatch = false;
+
+            items.forEach(function(item) {
+                var text = item.textContent.toLowerCase();
+                var answer = item.querySelector('.faq-answer');
+
+                if (text.includes(filter)) {
+                    item.style.display = 'block';
+                    cardHasMatch = true;
+                    if (filter.length > 1) {
+                        item.classList.add('open');
+                        answer.style.maxHeight = answer.scrollHeight + 30 + 'px';
+                    }
+                } else {
+                    item.style.display = 'none';
+                    item.classList.remove('open');
+                    answer.style.maxHeight = null;
+                }
+            });
+
+            card.style.display = cardHasMatch ? 'block' : 'none';
+        });
+    });
+</script>
 {% endblock %}

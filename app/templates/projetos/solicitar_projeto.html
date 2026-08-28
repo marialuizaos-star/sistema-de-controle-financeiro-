@@ -1,41 +1,74 @@
 {% extends "base_app.html" %}
 {% block titulo %}Solicitar novo projeto — SCF PROPEG{% endblock %}
 {% block conteudo %}
-<a href="{{ url_for('projetos.listar_projetos') }}" class="btn-link-secundario" style="margin-bottom:14px; display:inline-block; padding:6px 14px; font-size:12px;">← Projetos</a>
+<style>
+    .page-header {
+        position: relative;
+        padding-left: 18px;
+        margin-bottom: 24px;
+    }
+
+    .page-header::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 4px;
+        bottom: 4px;
+        width: 4px;
+        border-radius: 999px;
+        background: linear-gradient(180deg, #0d9488 0%, #38bdf8 100%);
+    }
+
+    .page-title {
+        font-size: 24px;
+        font-weight: 800;
+        color: var(--ink-strong, #0f172a);
+        margin: 0 0 4px 0;
+        letter-spacing: -0.4px;
+    }
+</style>
+
+<a href="{{ url_for('projetos.listar_projetos') }}" class="btn-link-secundario" style="margin-bottom:18px; display:inline-block; padding:7px 16px; font-size:12.5px;">← Voltar para Projetos</a>
 
 <div class="card">
-    <h2>Solicitar novo projeto</h2>
-    <p class="link-muted">
-        Preencha os dados do projeto e o plano de trabalho (como pretende distribuir o valor total
-        entre os itens de gasto, e o papel de cada responsável). Tudo será enviado junto para aprovação
-        do administrador — só depois de aprovado é que será possível lançar despesas de verdade.
-    </p>
+    <div class="page-header">
+        <h1 class="page-title">Solicitar novo projeto</h1>
+        <p class="link-muted" style="margin:0;">
+            Preencha os dados do projeto e o plano de trabalho. A solicitação será enviada para aprovação do administrador.
+        </p>
+    </div>
+
     <form method="POST" id="form-solicitar-projeto">
         {{ form.hidden_tag() }}
 
         <label>{{ form.nome.label }}</label>
-        {{ form.nome() }}
+        {{ form.nome(placeholder="Digite o título do projeto de pesquisa") }}
         {% for erro in form.nome.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
 
         <label>{{ form.valor_total.label }}</label>
         {{ form.valor_total(type="text", inputmode="numeric", class="campo-moeda", placeholder="0,00") }}
         {% for erro in form.valor_total.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
 
-        <label>{{ form.vigencia_inicio.label }}</label>
-        {{ form.vigencia_inicio() }}
-        {% for erro in form.vigencia_inicio.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
+        <div style="display:flex; gap:16px; flex-wrap:wrap;">
+            <div style="flex:1; min-width:220px;">
+                <label>{{ form.vigencia_inicio.label }}</label>
+                {{ form.vigencia_inicio() }}
+                {% for erro in form.vigencia_inicio.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
+            </div>
+            <div style="flex:1; min-width:220px;">
+                <label>{{ form.vigencia_fim.label }}</label>
+                {{ form.vigencia_fim() }}
+                {% for erro in form.vigencia_fim.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
+            </div>
+        </div>
 
-        <label>{{ form.vigencia_fim.label }}</label>
-        {{ form.vigencia_fim() }}
-        {% for erro in form.vigencia_fim.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
-
-        <h3 style="margin-top:24px; margin-bottom:0;">Plano de trabalho</h3>
-        <p class="link-muted" style="margin-top:4px;">O que pretende gastar, item por item (ex: alimentação, passagens, diárias), e o papel de quem é responsável por cada item.</p>
+        <h3 style="margin-top:28px; margin-bottom:4px; font-size:17px; font-weight:700; color:var(--ink-strong);">Plano de trabalho</h3>
+        <p class="link-muted" style="margin-top:0; font-size:13.5px;">Distribua o valor total item por item (alimentação, passagens, diárias) e o papel responsável.</p>
         {% for erro in form.itens_plano.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
 
         <div id="itens-plano-container">
             {% for item in form.itens_plano %}
-            <div class="item-plano" style="border:1px solid var(--border); border-radius:10px; padding:14px; margin-top:12px;">
+            <div class="item-plano" style="border:1px solid var(--border); border-radius:14px; padding:16px; margin-top:14px; background:#fff;">
                 <div style="display:flex; gap:12px; align-items:flex-start; flex-wrap:wrap;">
                     <div style="flex:1; min-width:160px;">
                         <label style="margin-top:0;">{{ item.form.papel_projeto.label }}</label>
@@ -64,13 +97,13 @@
             {% endfor %}
         </div>
 
-        <p style="margin-top:14px;">
-            <button type="button" id="btn-adicionar-item" style="margin-top:0; background:var(--accent-soft); color:var(--accent);">+ Adicionar item ao plano</button>
+        <p style="margin-top:16px;">
+            <button type="button" id="btn-adicionar-item" style="margin-top:0; background:#e0f2fe; color:#0284c7; border:none; padding:8px 18px;">+ Adicionar item ao plano</button>
         </p>
 
-        <div style="display:flex; gap:10px; align-items:center;">
+        <div style="display:flex; gap:12px; align-items:center; margin-top:24px;">
             <button type="submit">Enviar para aprovação</button>
-            <a href="{{ url_for('projetos.listar_projetos') }}" class="btn-link-secundario" style="margin-top:18px;">Cancelar</a>
+            <a href="{{ url_for('projetos.listar_projetos') }}" class="btn-link-secundario">Cancelar</a>
         </div>
     </form>
 </div>
@@ -102,9 +135,10 @@
         const div = document.createElement('div');
         div.className = 'item-plano';
         div.style.border = '1px solid var(--border)';
-        div.style.borderRadius = '10px';
-        div.style.padding = '14px';
-        div.style.marginTop = '12px';
+        div.style.borderRadius = '14px';
+        div.style.padding = '16px';
+        div.style.marginTop = '14px';
+        div.style.background = '#fff';
         div.innerHTML =
             '<div style="display:flex; gap:12px; align-items:flex-start; flex-wrap:wrap;">' +
                 '<div style="flex:1; min-width:160px;">' +
@@ -137,7 +171,9 @@
 
         const campoValorNovo = novaLinha.querySelector('.campo-moeda');
         campoValorNovo.addEventListener('input', function () {
-            aplicarMascaraMoeda(campoValorNovo);
+            if (typeof aplicarMascaraMoeda === 'function') {
+                aplicarMascaraMoeda(campoValorNovo);
+            }
         });
     });
 
@@ -152,9 +188,6 @@
         }
     });
 
-    // Sugestão automática de categoria ao trocar o tipo de alocação — usa
-    // delegação de evento no container, então funciona tanto nas linhas já
-    // renderizadas quanto nas criadas dinamicamente pelo botão "+ Adicionar".
     container.addEventListener('change', function (evento) {
         if (evento.target.name && evento.target.name.endsWith('-tipo_alocacao_id')) {
             var linha = evento.target.closest('.item-plano');
@@ -164,6 +197,16 @@
                 campoCategoria.value = sugestao;
             }
         }
+    });
+
+    // Sanitiza os campos de moeda antes do POST para o backend aceitar o formato float/decimal
+    document.getElementById('form-solicitar-projeto').addEventListener('submit', function () {
+        document.querySelectorAll('.campo-moeda').forEach(function (campo) {
+            if (campo.value) {
+                var limpo = campo.value.replace(/\./g, '').replace(',', '.');
+                campo.value = limpo;
+            }
+        });
     });
 })();
 </script>

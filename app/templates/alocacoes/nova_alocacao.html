@@ -1,29 +1,201 @@
 {% extends "base_app.html" %}
 {% block titulo %}Nova alocação — SCF PROPEG{% endblock %}
+
 {% block conteudo %}
-<a href="{{ url_for('projetos.detalhe_projeto', projeto_id=projeto.id) }}" class="btn-link-secundario" style="margin-bottom:14px; display:inline-block; padding:6px 14px; font-size:12px;">← {{ projeto.nome }}</a>
+<style>
+    /* Cabeçalho da página */
+    .page-header {
+        position: relative;
+        padding-left: 18px;
+        margin-bottom: 24px;
+    }
 
-<h1 style="font-size:22px; margin:0 0 4px 0;">Distribuição de Orçamento</h1>
-<p class="link-muted" style="margin:0 0 20px 0;">{{ projeto.nome }}</p>
+    .page-header::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 4px;
+        bottom: 4px;
+        width: 4px;
+        border-radius: 999px;
+        background: linear-gradient(180deg, #0d9488 0%, #38bdf8 100%);
+    }
 
+    .page-title {
+        font-size: 24px;
+        font-weight: 800;
+        color: var(--ink-strong, #0f172a);
+        margin: 0 0 4px 0;
+        letter-spacing: -0.4px;
+    }
+
+    .btn-voltar {
+        margin-bottom: 18px;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        text-decoration: none;
+        padding: 7px 16px;
+        border-radius: 999px;
+        font-size: 12.5px;
+        font-weight: 600;
+        background: #ffffff;
+        color: var(--ink, #1e293b);
+        border: 1px solid var(--border, #e2e8f0);
+        transition: all 0.2s ease;
+    }
+
+    .btn-voltar:hover {
+        background: #f8fafc;
+        transform: translateY(-1px);
+    }
+
+    /* Grid de Métricas Financeiras */
+    .stat-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 16px;
+        margin-bottom: 24px;
+    }
+
+    .stat-card {
+        background: var(--card, #ffffff);
+        border: 1px solid var(--border, #e2e8f0);
+        border-radius: 18px;
+        padding: 16px 20px;
+        box-shadow: 0 4px 15px rgba(15, 23, 42, 0.03);
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+
+    .stat-card-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 6px;
+    }
+
+    .stat-label {
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--muted, #64748b);
+    }
+
+    .stat-icon {
+        width: 32px;
+        height: 32px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 15px;
+    }
+
+    .stat-value {
+        font-size: 20px;
+        font-weight: 800;
+        color: var(--ink-strong, #0f172a);
+        letter-spacing: -0.3px;
+        margin: 2px 0;
+    }
+
+    .stat-sub {
+        font-size: 11.5px;
+        color: var(--muted, #64748b);
+    }
+
+    /* Botão Principal */
+    .btn-confirmar {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: #38bdf8;
+        color: #ffffff;
+        font-weight: 700;
+        font-size: 13.5px;
+        text-decoration: none;
+        padding: 9px 22px;
+        border-radius: 999px;
+        border: none;
+        box-shadow: 0 2px 8px rgba(56, 189, 248, 0.35);
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .btn-confirmar:hover {
+        background: #0284c7;
+        color: #ffffff;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(2, 132, 199, 0.3);
+    }
+
+    .btn-cancelar {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        box-sizing: border-box;
+        height: 38px;
+        padding: 0 20px;
+        border-radius: 999px;
+        font-size: 13px;
+        font-weight: 600;
+        text-decoration: none;
+        background: #ffffff;
+        color: var(--ink, #1e293b);
+        border: 1px solid var(--border, #e2e8f0);
+        transition: all 0.15s ease;
+    }
+
+    .btn-cancelar:hover {
+        background: #f8fafc;
+        border-color: #cbd5e1;
+    }
+</style>
+
+<a href="{{ url_for('projetos.detalhe_projeto', projeto_id=projeto.id) }}" class="btn-voltar">← {{ projeto.nome }}</a>
+
+<div class="page-header">
+    <h1 class="page-title">Distribuição de Orçamento</h1>
+    <p class="link-muted" style="margin:0;">{{ projeto.nome }}</p>
+</div>
+
+<!-- Cards de Resumo Financeiro -->
 <div class="stat-grid">
     <div class="stat-card">
-        <div class="stat-label">Valor total</div>
-        <div class="stat-value">R$ {{ projeto.valor_total | moeda }}</div>
+        <div class="stat-card-top">
+            <span class="stat-label">Valor total</span>
+            <div class="stat-icon" style="background:#e0f2fe; color:#0284c7;">💰</div>
+        </div>
+        <div class="stat-value mono">R$ {{ projeto.valor_total | moeda }}</div>
+        <div class="stat-sub">orçamento total do projeto</div>
     </div>
+
     <div class="stat-card">
-        <div class="stat-label">Total alocado</div>
-        <div class="stat-value">R$ {{ total_alocado | moeda }}</div>
+        <div class="stat-card-top">
+            <span class="stat-label">Total alocado</span>
+            <div class="stat-icon" style="background:#ecfdf5; color:#16a34a;">📋</div>
+        </div>
+        <div class="stat-value mono">R$ {{ total_alocado | moeda }}</div>
+        <div class="stat-sub">já distribuído em rubricas</div>
     </div>
+
     <div class="stat-card">
-        <div class="stat-label">Disponível para alocação</div>
-        <div class="stat-value">R$ {{ saldo | moeda }}</div>
+        <div class="stat-card-top">
+            <span class="stat-label">Disponível para alocação</span>
+            <div class="stat-icon" style="background:#f3e8ff; color:#7c3aed;">🏛️</div>
+        </div>
+        <div class="stat-value mono" style="color:#0284c7;">R$ {{ saldo | moeda }}</div>
+        <div class="stat-sub">restante para alocar</div>
     </div>
 </div>
 
+<!-- Card do Formulário de Alocação -->
 <div class="card">
-    <h2>Nova Alocação</h2>
-    <form method="POST">
+    <h2 style="margin-top:0; font-size:18px;">Nova Alocação</h2>
+    <form method="POST" id="form-alocacao">
         {{ form.hidden_tag() }}
 
         <div style="display:flex; gap:16px; flex-wrap:wrap;">
@@ -35,7 +207,7 @@
                 {% else %}
                 {{ form.usuario_id(style="display:none") }}
                 <label>Responsável</label>
-                <p style="margin-top:6px; font-weight:600;">{{ current_user.nome }}</p>
+                <p style="margin-top:8px; font-weight:700; color:var(--ink-strong);">{{ current_user.nome }}</p>
                 {% endif %}
             </div>
             <div style="flex:1; min-width:220px;">
@@ -45,10 +217,11 @@
             </div>
         </div>
 
-        <div style="display:flex; gap:16px; flex-wrap:wrap;">
+        <div style="display:flex; gap:16px; flex-wrap:wrap; margin-top:10px;">
             <div style="flex:1; min-width:220px;">
                 <label>{{ form.categoria.label }}</label>
                 {{ form.categoria() }}
+                {% for erro in form.categoria.errors %}<div class="erros-campo">{{ erro }}</div>{% endfor %}
             </div>
             <div style="flex:1; min-width:220px;">
                 <label>{{ form.valor_alocado.label }}</label>
@@ -57,9 +230,9 @@
             </div>
         </div>
 
-        <div style="display:flex; gap:10px; align-items:center;">
-            <button type="submit">Confirmar Alocação</button>
-            <a href="{{ url_for('projetos.detalhe_projeto', projeto_id=projeto.id) }}" class="btn-link-secundario" style="margin-top:18px;">Cancelar</a>
+        <div style="display:flex; gap:12px; align-items:center; margin-top:24px;">
+            <button type="submit" class="btn-confirmar">Confirmar Alocação</button>
+            <a href="{{ url_for('projetos.detalhe_projeto', projeto_id=projeto.id) }}" class="btn-cancelar">Cancelar</a>
         </div>
     </form>
 </div>
@@ -78,6 +251,15 @@
             }
         });
     }
+
+    // Sanitização de moeda antes do POST para garantir o formato correto no backend
+    document.getElementById('form-alocacao').addEventListener('submit', function () {
+        document.querySelectorAll('.campo-moeda').forEach(function (campo) {
+            if (campo.value) {
+                campo.value = campo.value.replace(/\./g, '').replace(',', '.');
+            }
+        });
+    });
 })();
 </script>
 {% endblock %}

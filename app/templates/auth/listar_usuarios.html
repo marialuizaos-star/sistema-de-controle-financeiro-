@@ -2,20 +2,177 @@
 {% block titulo %}Usuários — SCF PROPEG{% endblock %}
 {% block conteudo %}
 <style>
-    .escondido { display: none; }
+    .escondido { display: none !important; }
+
+    /* Cabeçalho da página */
+    .page-header {
+        position: relative;
+        padding-left: 18px;
+    }
+
+    .page-header::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 4px;
+        bottom: 4px;
+        width: 4px;
+        border-radius: 999px;
+        background: linear-gradient(180deg, #0d9488 0%, #38bdf8 100%);
+    }
+
+    .page-title {
+        font-size: 24px;
+        font-weight: 800;
+        color: var(--ink-strong, #0f172a);
+        margin: 0 0 4px 0;
+        letter-spacing: -0.4px;
+    }
+
+    /* Container dos botões de filtro / abas */
+    .pill-tabs {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-bottom: 16px;
+    }
+
+    .pill-tab {
+        border: 1px solid #0284c7;
+        background: #0284c7;
+        color: #ffffff;
+        padding: 7px 18px;
+        border-radius: 999px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        margin: 0;
+        box-shadow: 0 2px 6px rgba(2, 132, 199, 0.2);
+        transition: all 0.2s ease;
+    }
+
+    .pill-tab:hover {
+        background: #0369a1;
+        border-color: #0369a1;
+        color: #ffffff;
+        transform: translateY(-1px);
+    }
+
+    .pill-tab.active {
+        background: #0f172a !important;
+        border-color: #0f172a !important;
+        color: #ffffff !important;
+        box-shadow: 0 4px 12px rgba(15, 23, 42, 0.35);
+        font-weight: 700;
+        transform: none;
+    }
+
+    /* Avatar do Usuário */
+    .avatar-circulo {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #0284c7 0%, #38bdf8 100%);
+        color: #ffffff;
+        font-weight: 700;
+        font-size: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+    /* Botões de Ação na Tabela */
+    .btn-action {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        box-sizing: border-box;
+        height: 30px;
+        padding: 0 14px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 700;
+        text-decoration: none;
+        border: 1px solid transparent;
+        cursor: pointer;
+        line-height: 1;
+        transition: all 0.15s ease;
+        margin: 0;
+    }
+
+    .btn-action-default {
+        background: #ffffff;
+        color: var(--ink-strong, #0f172a);
+        border-color: var(--border, #e2e8f0);
+    }
+    .btn-action-default:hover {
+        background: #f8fafc;
+        border-color: #cbd5e1;
+    }
+
+    .btn-action-warning {
+        background: #fef3c7;
+        color: #d97706;
+        border-color: #fde68a;
+    }
+    .btn-action-warning:hover {
+        background: #d97706;
+        color: #ffffff;
+    }
+
+    .btn-action-success {
+        background: #dcfce7;
+        color: #15803d;
+        border-color: #bbf7d0;
+    }
+    .btn-action-success:hover {
+        background: #16a34a;
+        color: #ffffff;
+    }
+
+    .btn-action-danger {
+        background: #fee2e2;
+        color: #dc2626;
+        border-color: #fecaca;
+    }
+    .btn-action-danger:hover {
+        background: #ef4444;
+        color: #ffffff;
+    }
+
+    /* Badges de Status */
+    .status-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 3px 10px;
+        border-radius: 999px;
+        font-size: 11.5px;
+        font-weight: 700;
+    }
+    .status-pill-verde { background: #dcfce7; color: #15803d; }
+    .status-pill-cinza { background: #f1f5f9; color: #64748b; }
+    .status-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
 </style>
 
-<div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:20px; flex-wrap:wrap; gap:12px;">
-    <div>
-        <h1 style="font-size:22px; margin:0 0 4px 0;">Gerenciamento de Usuários</h1>
+<!-- Topo da página -->
+<div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:24px; flex-wrap:wrap; gap:16px;">
+    <div class="page-header">
+        <h1 class="page-title">Gerenciamento de Usuários</h1>
         <p class="link-muted" style="margin:0;">{{ total_ativos }} usuários ativos no sistema</p>
     </div>
-    <button type="button" id="btn-toggle-cadastro" onclick="alternarCadastro()">{{ '× Cancelar' if abrir_cadastro else '+ Novo Usuário' }}</button>
+    <div>
+        <button type="button" id="btn-toggle-cadastro" onclick="alternarCadastro()" class="btn-link-primario" style="cursor:pointer; border:none;">
+            {{ '× Cancelar' if abrir_cadastro else '+ Novo Usuário' }}
+        </button>
+    </div>
 </div>
 
-<div class="card {{ '' if abrir_cadastro else 'escondido' }}" id="painel-cadastro">
-    <h2>Cadastrar Novo Usuário</h2>
-    <p class="link-muted">A senha definida aqui é provisória — o usuário será obrigado a trocá-la no primeiro acesso.</p>
+<!-- Card Formulário de Cadastro (Colapsável) -->
+<div class="card {{ '' if abrir_cadastro else 'escondido' }}" id="painel-cadastro" style="margin-bottom:24px;">
+    <h2 style="margin-top:0;">Cadastrar Novo Usuário</h2>
+    <p class="link-muted" style="margin-bottom:20px;">A senha definida aqui é provisória — o usuário deverá trocá-la no primeiro acesso.</p>
     <form method="POST" action="{{ url_for('auth.cadastro') }}">
         {{ form_cadastro.hidden_tag() }}
 
@@ -68,20 +225,22 @@
             </div>
         </div>
 
-        <div style="display:flex; gap:10px; align-items:center;">
+        <div style="display:flex; gap:10px; align-items:center; margin-top:16px;">
             <button type="submit">Salvar Usuário</button>
-            <button type="button" onclick="alternarCadastro()" style="margin-top:18px; background:#fff; color:var(--ink); border:1px solid var(--border);">Cancelar</button>
+            <button type="button" onclick="alternarCadastro()" class="btn-action btn-action-default" style="height:38px; padding:0 20px;">Cancelar</button>
         </div>
     </form>
 </div>
 
+<!-- Abas de Filtro de Categoria -->
 <div class="pill-tabs" id="abas-usuario">
     <button type="button" class="pill-tab active" id="tab-externos" onclick="mostrarAba('externos')">Usuários Externos (Pesquisadores) ({{ externos | length }})</button>
     <button type="button" class="pill-tab" id="tab-administradores" onclick="mostrarAba('administradores')">Administradores ({{ administradores | length }})</button>
 </div>
 
+<!-- Macro para Renderização da Tabela de Usuários -->
 {% macro tabela_usuarios(lista) %}
-<table>
+<table style="margin:0;">
     <tr>
         <th>Usuário</th>
         <th>E-mail</th>
@@ -90,7 +249,7 @@
         <th>Projetos</th>
         <th>Último acesso</th>
         <th>Status</th>
-        <th style="text-align:right">Ações</th>
+        <th style="text-align:right;">Ações</th>
     </tr>
     {% for usuario in lista %}
     {% set partes = usuario.nome.split() %}
@@ -98,53 +257,56 @@
     <tr class="linha-clicavel" data-href="{{ url_for('auth.editar_usuario', usuario_id=usuario.id) }}">
         <td>
             <div style="display:flex; align-items:center; gap:10px;">
-                <div class="app-avatar" style="width:32px; height:32px; font-size:12px;">{{ iniciais }}</div>
+                <div class="avatar-circulo">{{ iniciais }}</div>
                 <div>
-                    <div style="font-weight:600;">{{ usuario.nome }}</div>
-                    <div class="link-muted" style="font-size:11px;">USR-{{ "%03d"|format(usuario.id) }}{% if usuario.senha_provisoria %} · senha provisória{% endif %}</div>
+                    <div style="font-weight:700; color:var(--ink-strong);">{{ usuario.nome }}</div>
+                    <div class="mono link-muted" style="font-size:11px;">USR-{{ "%03d"|format(usuario.id) }}{% if usuario.senha_provisoria %} · senha provisória{% endif %}</div>
                 </div>
             </div>
         </td>
-        <td>{{ usuario.email }}</td>
+        <td style="color:var(--ink);">{{ usuario.email }}</td>
         <td class="mono">{{ usuario.cpf or "—" }}</td>
         <td>{{ usuario.departamento or "—" }}</td>
-        <td>{{ contagem_projetos.get(usuario.id, 0) }}</td>
-        <td>{{ usuario.ultimo_acesso.strftime('%d/%m/%Y') if usuario.ultimo_acesso else "—" }}</td>
+        <td class="mono" style="font-weight:600;">{{ contagem_projetos.get(usuario.id, 0) }}</td>
+        <td class="mono">{{ usuario.ultimo_acesso.strftime('%d/%m/%Y') if usuario.ultimo_acesso else "—" }}</td>
         <td>
             {% if usuario.ativo %}
-            <span class="badge badge-verde"><span class="badge-dot"></span>Ativo</span>
+            <span class="status-pill status-pill-verde"><span class="status-dot"></span>Ativo</span>
             {% else %}
-            <span class="badge badge-cinza"><span class="badge-dot"></span>Inativo</span>
+            <span class="status-pill status-pill-cinza"><span class="status-dot"></span>Inativo</span>
             {% endif %}
         </td>
-        <td style="text-align:right" class="impede-clique-linha">
-            <div class="menu-dropdown">
-                <button type="button" class="menu-dropdown-btn" aria-label="Mais opções">☰</button>
-                <div class="menu-dropdown-lista">
-                    <a href="{{ url_for('auth.editar_usuario', usuario_id=usuario.id) }}">Editar</a>
-                    {% if usuario.id != current_user.id %}
-                    <form method="POST" action="{{ url_for('auth.alternar_status_usuario', usuario_id=usuario.id) }}">
-                        <button type="submit">{{ "Desativar" if usuario.ativo else "Reativar" }}</button>
-                    </form>
-                    <form method="POST" action="{{ url_for('auth.excluir_usuario', usuario_id=usuario.id) }}"
-                          onsubmit="return confirm('Tem certeza que deseja excluir {{ usuario.nome }}? Essa ação não pode ser desfeita.');">
-                        <button type="submit" class="perigo">Excluir</button>
-                    </form>
+        <td style="text-align:right;" class="impede-clique-linha">
+            <div style="display:inline-flex; gap:6px; justify-content:flex-end; align-items:center;">
+                <a href="{{ url_for('auth.editar_usuario', usuario_id=usuario.id) }}" class="btn-action btn-action-default">Editar</a>
+                {% if usuario.id != current_user.id %}
+                <form method="POST" action="{{ url_for('auth.alternar_status_usuario', usuario_id=usuario.id) }}" style="margin:0; display:inline-flex;">
+                    {% if usuario.ativo %}
+                    <button type="submit" class="btn-action btn-action-warning" onclick="return confirm('Desativar o acesso de {{ usuario.nome }}?');">Desativar</button>
+                    {% else %}
+                    <button type="submit" class="btn-action btn-action-success" onclick="return confirm('Reativar o acesso de {{ usuario.nome }}?');">Reativar</button>
                     {% endif %}
-                </div>
+                </form>
+                <form method="POST" action="{{ url_for('auth.excluir_usuario', usuario_id=usuario.id) }}"
+                      onsubmit="return confirm('Tem certeza que deseja excluir {{ usuario.nome }}? Essa ação não pode ser desfeita.');" style="margin:0; display:inline-flex;">
+                    <button type="submit" class="btn-action btn-action-danger">Excluir</button>
+                </form>
+                {% endif %}
             </div>
         </td>
     </tr>
     {% else %}
-    <tr><td colspan="8" class="link-muted">Nenhum usuário nesta categoria.</td></tr>
+    <tr><td colspan="8" class="link-muted" style="padding:24px; text-align:center;">Nenhum usuário nesta categoria.</td></tr>
     {% endfor %}
 </table>
 {% endmacro %}
 
-<div class="card" id="painel-externos">
+<!-- Cards das Tabelas -->
+<div class="card" id="painel-externos" style="padding:0; overflow:hidden;">
     {{ tabela_usuarios(externos) }}
 </div>
-<div class="card escondido" id="painel-administradores">
+
+<div class="card escondido" id="painel-administradores" style="padding:0; overflow:hidden;">
     {{ tabela_usuarios(administradores) }}
 </div>
 

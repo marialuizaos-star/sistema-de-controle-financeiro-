@@ -1,8 +1,59 @@
 {% extends "base_app.html" %}
 {% block titulo %}Downloads — SCF PROPEG{% endblock %}
 {% block conteudo %}
-<h1 style="font-size:22px; margin:0 0 4px 0;">Central de Downloads</h1>
-<p class="link-muted" style="margin:0 0 20px 0;">Manual do sistema e modelos de documentos (relatório de viagem, recibo, prestação de contas). Baixe, preencha, converta pra PDF e anexe na hora de lançar a despesa ou enviar a prestação de contas.</p>
+<style>
+    .page-header {
+        margin-bottom: 28px;
+        position: relative;
+        padding-left: 18px;
+    }
+
+    .page-header::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 4px;
+        bottom: 4px;
+        width: 4px;
+        border-radius: 999px;
+        background: linear-gradient(180deg, #0d9488 0%, #38bdf8 100%);
+    }
+
+    .page-title {
+        font-size: 24px;
+        font-weight: 800;
+        color: var(--ink-strong, #0f172a);
+        margin: 0 0 6px 0;
+        letter-spacing: -0.4px;
+    }
+
+    .page-subtitle {
+        color: var(--muted, #64748B);
+        font-size: 13.5px;
+        line-height: 1.6;
+        margin: 0;
+        max-width: 800px;
+    }
+
+    .badge-section {
+        display: inline-block;
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: #0284c7;
+        background: #e0f2fe;
+        padding: 3px 10px;
+        border-radius: 999px;
+        margin-bottom: 6px;
+    }
+</style>
+
+<div class="page-header">
+    <span class="badge-section">Recursos & Modelos</span>
+    <h1 class="page-title">Central de Downloads</h1>
+    <p class="page-subtitle">Manual do sistema e modelos de documentos (relatório de viagem, recibo, prestação de contas). Baixe, preencha, converta para PDF e anexe na hora de lançar a despesa ou enviar a prestação de contas.</p>
+</div>
 
 {% if current_user.papel == "administrador" %}
 <div class="card">
@@ -36,7 +87,7 @@
         </tr>
         {% for documento in documentos %}
         <tr class="linha-clicavel" data-href="{{ url_for('downloads.baixar', documento_id=documento.id) }}">
-            <td>📄 {{ documento.titulo }}</td>
+            <td style="font-weight: 600; color: var(--ink-strong);">{{ documento.titulo }}</td>
             <td class="link-muted">{{ documento.descricao or "—" }}</td>
             <td style="text-align:right" class="impede-clique-linha">
                 <a href="{{ url_for('downloads.baixar', documento_id=documento.id) }}" class="btn-sm">Baixar</a>
@@ -49,7 +100,7 @@
             </td>
         </tr>
         {% else %}
-        <tr><td colspan="3" class="link-muted">Nenhum documento disponível ainda.</td></tr>
+        <tr><td colspan="3" class="link-muted" style="text-align: center; padding: 24px;">Nenhum documento disponível ainda.</td></tr>
         {% endfor %}
     </table>
 </div>

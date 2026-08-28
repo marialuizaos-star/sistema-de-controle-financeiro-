@@ -2,19 +2,201 @@
 {% block titulo %}Projetos — SCF PROPEG{% endblock %}
 {% block conteudo %}
 <style>
-    .escondido { display: none; }
+    .escondido { display: none !important; }
+
+    /* Cabeçalho da página */
+    .page-header {
+        position: relative;
+        padding-left: 18px;
+    }
+
+    .page-header::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 4px;
+        bottom: 4px;
+        width: 4px;
+        border-radius: 999px;
+        background: linear-gradient(180deg, #0d9488 0%, #38bdf8 100%);
+    }
+
+    .page-title {
+        font-size: 24px;
+        font-weight: 800;
+        color: var(--ink-strong, #0f172a);
+        margin: 0 0 4px 0;
+        letter-spacing: -0.4px;
+    }
+
+    /* Botão "+ Novo Projeto" e "+ Solicitar novo projeto" */
+    .btn-novo-projeto {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: #38bdf8;
+        color: #ffffff;
+        font-weight: 700;
+        font-size: 13.5px;
+        text-decoration: none;
+        padding: 9px 20px;
+        border-radius: 999px;
+        border: none;
+        box-shadow: 0 2px 8px rgba(56, 189, 248, 0.35);
+        transition: all 0.2s ease;
+    }
+
+    .btn-novo-projeto:hover {
+        background: #0284c7;
+        color: #ffffff;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(2, 132, 199, 0.3);
+    }
+
+    /* Container dos botões de filtro */
+    .pill-tabs {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-top: 14px;
+    }
+
+    /* Botão de filtro padrão na mesma cor */
+    .pill-tab {
+        border: 1px solid #38bdf8;
+        background: #38bdf8;
+        color: #ffffff;
+        padding: 7px 18px;
+        border-radius: 999px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        margin: 0;
+        box-shadow: 0 2px 6px rgba(56, 189, 248, 0.25);
+        transition: all 0.2s ease;
+    }
+
+    .pill-tab:hover {
+        background: #0284c7;
+        border-color: #0284c7;
+        color: #ffffff;
+        transform: translateY(-1px);
+    }
+
+    .pill-tab.active {
+        background: #0f172a !important;
+        border-color: #0f172a !important;
+        color: #ffffff !important;
+        box-shadow: 0 4px 12px rgba(15, 23, 42, 0.35);
+        font-weight: 700;
+        transform: none;
+    }
+
+    /* Botão Ver em pílula na mesma cor */
+    .btn-ver-tabela {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        box-sizing: border-box;
+        height: 30px;
+        padding: 0 18px;
+        border-radius: 999px;
+        font-size: 12.5px;
+        font-weight: 700;
+        text-decoration: none;
+        background: #38bdf8;
+        color: #ffffff;
+        border: none;
+        box-shadow: 0 2px 6px rgba(56, 189, 248, 0.3);
+        transition: all 0.15s ease;
+        line-height: 1;
+    }
+
+    .btn-ver-tabela:hover {
+        background: #0284c7;
+        color: #ffffff;
+        transform: translateY(-1px);
+        box-shadow: 0 3px 8px rgba(2, 132, 199, 0.35);
+    }
+
+    /* Dropdown de Opções */
+    .menu-dropdown {
+        position: relative;
+        display: inline-block;
+    }
+
+    .menu-dropdown-btn {
+        background: #38bdf8;
+        color: #ffffff;
+        border: none;
+        border-radius: 50%;
+        width: 38px;
+        height: 38px;
+        cursor: pointer;
+        font-size: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0;
+        transition: all 0.2s;
+        box-shadow: 0 2px 8px rgba(56, 189, 248, 0.35);
+    }
+
+    .menu-dropdown-btn:hover {
+        background: #0284c7;
+        transform: translateY(-1px);
+    }
+
+    .menu-dropdown-lista {
+        position: absolute;
+        right: 0;
+        top: 46px;
+        background: #ffffff;
+        border: 1px solid var(--border, #e2e8f0);
+        border-radius: 16px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+        padding: 8px;
+        min-width: 240px;
+        z-index: 50;
+        display: none;
+    }
+
+    .menu-dropdown-lista.aberto {
+        display: block;
+    }
+
+    .menu-dropdown-lista a {
+        display: block;
+        width: 100%;
+        text-align: left;
+        padding: 9px 14px;
+        border-radius: 10px;
+        font-size: 13px;
+        font-weight: 600;
+        text-decoration: none;
+        color: var(--ink, #1e293b);
+        background: none;
+        margin: 2px 0;
+        box-sizing: border-box;
+        transition: all 0.15s;
+    }
+
+    .menu-dropdown-lista a:hover {
+        background: #e0f2fe;
+        color: #0284c7;
+    }
 </style>
 
-<div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:20px; flex-wrap:wrap; gap:12px;">
-    <div>
-        <h1 style="font-size:22px; margin:0 0 4px 0;">Projetos de Pesquisa</h1>
+<div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:24px; flex-wrap:wrap; gap:16px;">
+    <div class="page-header">
+        <h1 class="page-title">Projetos de Pesquisa</h1>
         <p class="link-muted" style="margin:0;">{{ projetos | length }} projeto{{ "s" if projetos|length != 1 else "" }} encontrado{{ "s" if projetos|length != 1 else "" }}</p>
     </div>
-    {% if current_user.papel == "administrador" %}
+    {% if current_user.papel in ["administrador", "admin"] %}
     <div style="display:flex; gap:10px; align-items:center;">
-        <a href="{{ url_for('projetos.novo_projeto') }}" class="btn-link-primario">+ Novo Projeto</a>
+        <a href="{{ url_for('projetos.novo_projeto') }}" class="btn-novo-projeto">+ Novo Projeto</a>
         <div class="menu-dropdown">
-            <button type="button" class="menu-dropdown-btn" aria-label="Mais opções">☰</button>
+            <button type="button" class="menu-dropdown-btn" onclick="document.querySelector('.menu-dropdown-lista').classList.toggle('aberto')" aria-label="Mais opções">☰</button>
             <div class="menu-dropdown-lista">
                 <a href="{{ url_for('projetos.projetos_pendentes') }}">Pendentes de aprovação</a>
                 <a href="{{ url_for('remanejamentos.remanejamentos_pendentes') }}">Remanejamentos pendentes</a>
@@ -24,7 +206,7 @@
         </div>
     </div>
     {% else %}
-    <a href="{{ url_for('projetos.solicitar_projeto') }}" class="btn-link-primario">+ Solicitar novo projeto</a>
+    <a href="{{ url_for('projetos.solicitar_projeto') }}" class="btn-novo-projeto">+ Solicitar novo projeto</a>
     {% endif %}
 </div>
 
@@ -39,7 +221,7 @@
     </div>
 </div>
 
-<div class="card" style="padding:0;">
+<div class="card" style="padding:0; overflow:hidden;">
     <table id="tabela-projetos">
         <tr>
             <th>Código</th>
@@ -54,16 +236,18 @@
         {% set cor = {"ativo": "verde", "pendente_aprovacao": "laranja", "reprovado": "vermelho", "inativo": "cinza", "encerrado": "cinza"}.get(projeto.status, "cinza") %}
         <tr class="linha-projeto linha-clicavel" data-href="{{ url_for('projetos.detalhe_projeto', projeto_id=projeto.id) }}"
             data-status="{{ projeto.status }}" data-busca="{{ (codigos[projeto.id] ~ ' ' ~ projeto.nome ~ ' ' ~ (projeto.criado_por.nome if projeto.criado_por else '')) | lower }}">
-            <td class="mono">{{ codigos[projeto.id] }}</td>
-            <td>{{ projeto.nome }}</td>
+            <td class="mono" style="font-weight:600;">{{ codigos[projeto.id] }}</td>
+            <td style="font-weight:600; color:var(--ink-strong);">{{ projeto.nome }}</td>
             <td>{{ projeto.criado_por.nome if projeto.criado_por else "—" }}</td>
             <td class="mono">{{ projeto.vigencia_inicio.strftime('%d/%m/%Y') }} → {{ projeto.vigencia_fim.strftime('%d/%m/%Y') }}</td>
-            <td class="mono">R$ {{ projeto.valor_total | moeda }}</td>
+            <td class="mono" style="font-weight:600;">R$ {{ projeto.valor_total | moeda }}</td>
             <td><span class="badge badge-{{ cor }}"><span class="badge-dot"></span>{{ projeto.status | rotulo }}</span></td>
-            <td style="text-align:right"><a href="{{ url_for('projetos.detalhe_projeto', projeto_id=projeto.id) }}" class="btn-sm impede-clique-linha">Ver</a></td>
+            <td style="text-align:right" class="impede-clique-linha">
+                <a href="{{ url_for('projetos.detalhe_projeto', projeto_id=projeto.id) }}" class="btn-ver-tabela">Ver</a>
+            </td>
         </tr>
         {% else %}
-        <tr><td colspan="7" class="link-muted" style="padding:16px;">Nenhum projeto cadastrado ainda.</td></tr>
+        <tr><td colspan="7" class="link-muted" style="padding:24px; text-align:center;">Nenhum projeto cadastrado ainda.</td></tr>
         {% endfor %}
     </table>
 </div>
@@ -87,5 +271,12 @@
             linha.classList.toggle('escondido', !(bateStatus && bateBusca));
         });
     }
+
+    window.addEventListener('click', function (e) {
+        if (!e.target.closest('.menu-dropdown')) {
+            var menu = document.querySelector('.menu-dropdown-lista');
+            if (menu) menu.classList.remove('aberto');
+        }
+    });
 </script>
 {% endblock %}
