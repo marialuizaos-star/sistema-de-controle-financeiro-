@@ -38,10 +38,28 @@ def _codigo_projeto(projeto):
     return f"PRJ-{ano}-{numero:03d}"
 
 
+def _valor_alocado_usuario(projeto_id, usuario_id):
+    """Soma das alocações principais (Nível 1) desse usuário nesse projeto —
+    é o que o usuário externo deve ver como 'valor' na listagem de projetos,
+    já que o valor total do projeto (verba global) é informação só do
+    administrador (decisão de 19/09/2026)."""
+    total = (
+        db.session.query(db.func.coalesce(db.func.sum(Alocacao.valor_alocado), 0))
+        .filter(
+            Alocacao.projeto_id == projeto_id,
+            Alocacao.usuario_id == usuario_id,
+            Alocacao.alocacao_pai_id.is_(None),
+        )
+        .scalar()
+    )
+    return Decimal(total)
+
+
 @projetos_bp.route("/projetos")
 @login_required
 def listar_projetos():
-    if current_user.papel == "administrador":
+    eh_admin = current_user.papel == "administrador"
+    if eh_admin:
         query = Projeto.query
     else:
         query = Projeto.query.filter(
@@ -55,7 +73,13 @@ def listar_projetos():
     codigos = {p.id: _codigo_projeto(p) for p in projetos}
     projetos = sorted(projetos, key=lambda p: codigos[p.id], reverse=True)
 
-    return render_template("projetos/listar_projetos.html", projetos=projetos, codigos=codigos)
+    valores_usuario = {}
+    if not eh_admin:
+        valores_usuario = {p.id: _valor_alocado_usuario(p.id, current_user.id) for p in projetos}
+
+    return render_template(
+        "projetos/listar_projetos.html", projetos=projetos, codigos=codigos, valores_usuario=valores_usuario
+    )
 
 
 @projetos_bp.route("/projetos/novo", methods=["GET", "POST"])

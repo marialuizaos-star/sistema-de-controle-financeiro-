@@ -20,7 +20,7 @@ class Config:
     SECRET_KEY = os.environ.get("SECRET_KEY") or secrets.token_hex(32)
 
     SQLALCHEMY_DATABASE_URI = os.environ.get(
-        "DATABASE_URL", "postgresql://usuario:senha@localhost:5432/scf_propeg"
+        "DATABASE_URL", "postgresql://usuario:senha@localhost:5432/scf_PROPI"
     )
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 

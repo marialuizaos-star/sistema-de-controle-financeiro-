@@ -83,6 +83,20 @@ def _projeto_permite_despesa(projeto):
     return projeto.status == "ativo"
 
 
+def _alocacao_principal_da(alocacao):
+    """Volta a alocação Nível 1 dona da verba — a própria alocação, se já
+    for principal, ou o pai dela, se for uma sub-alocação (Nível 2)."""
+    return alocacao if alocacao.alocacao_pai_id is None else alocacao.pai
+
+
+def _prestacao_bloqueia_despesa(alocacao):
+    """Bloqueia lançamento só pra quem tem a PRÓPRIA prestação de contas em
+    análise — não trava o projeto inteiro pras outras pessoas (decisão de
+    19/09/2026: prestação passou a ser por pessoa, não por projeto)."""
+    principal = _alocacao_principal_da(alocacao)
+    return principal is not None and principal.status_prestacao_contas == "em_analise"
+
+
 def _data_dentro_da_vigencia(data, projeto):
     return projeto.vigencia_inicio <= data <= projeto.vigencia_fim
 
@@ -126,17 +140,17 @@ def nova_despesa(alocacao_id):
         return redirect(url_for("projetos.listar_projetos"))
     if not _pode_lancar(alocacao):
         flash("Você não tem permissão para lançar despesas nesta alocação.", "erro")
-        return redirect(url_for("projetos.detalhe_projeto", projeto_id=alocacao.projeto_id))
+        return redirect(url_for("alocacoes.detalhe_responsavel", projeto_id=alocacao.projeto_id, usuario_id=alocacao.usuario_id))
     if not _projeto_permite_despesa(alocacao.projeto):
         flash("Este projeto ainda não foi aprovado pelo administrador. Não é possível lançar despesas.", "erro")
-        return redirect(url_for("projetos.detalhe_projeto", projeto_id=alocacao.projeto_id))
-    if alocacao.projeto.status_prestacao_contas == "em_analise":
-        flash("A prestação de contas deste projeto está em análise. Não é possível lançar despesas até que seja concluída.", "erro")
-        return redirect(url_for("projetos.detalhe_projeto", projeto_id=alocacao.projeto_id))
-    
+        return redirect(url_for("alocacoes.detalhe_responsavel", projeto_id=alocacao.projeto_id, usuario_id=alocacao.usuario_id))
+    if _prestacao_bloqueia_despesa(alocacao):
+        flash("Sua prestação de contas está em análise. Não é possível lançar despesas até que seja concluída.", "erro")
+        return redirect(url_for("alocacoes.detalhe_responsavel", projeto_id=alocacao.projeto_id, usuario_id=alocacao.usuario_id))
+
     if alocacao.status != "aprovada" or alocacao.tipo_alocacao_id is None:
         flash("Despesas só podem ser lançadas em sub-alocações aprovadas e com tipo de despesa definido.", "erro")
-        return redirect(url_for("projetos.detalhe_projeto", projeto_id=alocacao.projeto_id))
+        return redirect(url_for("alocacoes.detalhe_responsavel", projeto_id=alocacao.projeto_id, usuario_id=alocacao.usuario_id))
 
     form = DespesaForm()
     form.alocacao_id.choices = [(alocacao.id, _rotulo_alocacao(alocacao))]
@@ -175,9 +189,6 @@ def nova_despesa_projeto(projeto_id):
     if not _projeto_permite_despesa(projeto):
         flash("Este projeto ainda não foi aprovado pelo administrador. Não é possível lançar despesas.", "erro")
         return redirect(url_for("projetos.detalhe_projeto", projeto_id=projeto.id))
-    if projeto.status_prestacao_contas == "em_analise":
-        flash("A prestação de contas deste projeto está em análise. Não é possível lançar despesas até que seja concluída.", "erro")
-        return redirect(url_for("projetos.detalhe_projeto", projeto_id=projeto.id))
 
     # Modificado: Apenas alocações aprovadas e que sejam Nível 2 (tenham tipo_alocacao_id)
     query_alocacoes = Alocacao.query.filter(
@@ -189,8 +200,20 @@ def nova_despesa_projeto(projeto_id):
         query_alocacoes = query_alocacoes.filter(Alocacao.usuario_id == current_user.id)
     alocacoes_disponiveis = query_alocacoes.order_by(Alocacao.id).all()
 
+    # Cada pessoa pode ter sua própria prestação de contas em análise sem
+    # travar as demais — filtra fora só as alocações de quem está nessa
+    # situação (o admin continua vendo todas, já que ele não é bloqueado).
+    if current_user.papel != "administrador":
+        alocacoes_disponiveis = [a for a in alocacoes_disponiveis if not _prestacao_bloqueia_despesa(a)]
+
     if not alocacoes_disponiveis:
-        flash("Não há alocações disponíveis para lançar despesa neste projeto. Certifique-se de ter sub-alocações aprovadas e com tipo definido.", "erro")
+        if current_user.papel != "administrador" and any(
+            _alocacao_principal_da(a) and _alocacao_principal_da(a).status_prestacao_contas == "em_analise"
+            for a in query_alocacoes.all()
+        ):
+            flash("Sua prestação de contas está em análise. Não é possível lançar despesas até que seja concluída.", "erro")
+        else:
+            flash("Não há alocações disponíveis para lançar despesa neste projeto. Certifique-se de ter sub-alocações aprovadas e com tipo definido.", "erro")
         return redirect(url_for("projetos.detalhe_projeto", projeto_id=projeto.id))
 
     saldo_projeto = _saldo_disponivel_projeto(projeto)
@@ -255,7 +278,7 @@ def estornar_despesa(despesa_id):
         notificar_usuario(
             despesa.alocacao.usuario_id,
             f'Uma despesa sua em "{despesa.alocacao.projeto.nome}" foi estornada: {form.motivo.data}',
-            link=url_for("projetos.detalhe_projeto", projeto_id=despesa.alocacao.projeto_id),
+            link=url_for("alocacoes.detalhe_responsavel", projeto_id=despesa.alocacao.projeto_id, usuario_id=despesa.alocacao.usuario_id),
         )
         db.session.commit()
         flash("Despesa estornada com sucesso.", "sucesso")
@@ -285,7 +308,7 @@ def reprovar_despesa(despesa_id):
         notificar_usuario(
             despesa.alocacao.usuario_id,
             f'Uma despesa sua em "{despesa.alocacao.projeto.nome}" foi reprovada: {form.motivo.data}',
-            link=url_for("projetos.detalhe_projeto", projeto_id=despesa.alocacao.projeto_id),
+            link=url_for("alocacoes.detalhe_responsavel", projeto_id=despesa.alocacao.projeto_id, usuario_id=despesa.alocacao.usuario_id),
         )
         db.session.commit()
         flash("Despesa reprovada.", "sucesso")
@@ -300,6 +323,12 @@ def listar_despesas(projeto_id):
     projeto = db.session.get(Projeto, projeto_id)
     if projeto is None:
         flash("Projeto não encontrado.", "erro")
+        return redirect(url_for("projetos.listar_projetos"))
+    if current_user.papel != "administrador" and not (
+        Alocacao.query.filter_by(projeto_id=projeto_id, usuario_id=current_user.id).first()
+        or projeto.criado_por_id == current_user.id
+    ):
+        flash("Você não tem acesso a este projeto.", "erro")
         return redirect(url_for("projetos.listar_projetos"))
     despesas = _despesas_do_projeto(projeto)
     return render_template("despesas/listar_despesas.html", despesas=despesas, projeto=projeto)

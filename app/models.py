@@ -70,18 +70,16 @@ class Projeto(db.Model):
     vigencia_fim = db.Column(db.Date, nullable=False)
     status = db.Column(db.String(20), nullable=False, default="ativo")
 
-    # Categoria fixa do projeto inteiro (Custeio, Capital ou Ambos), escolhida
-    # na criação — todas as alocações dentro dele herdam essa categoria
-    # automaticamente, EXCETO quando é "ambos": nesse caso cada alocação
-    # principal escolhe individualmente custeio ou capital (RF01, ajustado
-    # em 19/08/2026 pra suportar projetos com as duas naturezas de verba).
-    # Nullable pra não exigir preenchimento em projetos criados antes dessa
-    # mudança.
     categoria = db.Column(db.String(10), nullable=True)
 
     criado_por_id = db.Column(db.Integer, db.ForeignKey("usuario.id"), nullable=True)
     motivo_reprovacao = db.Column(db.Text, nullable=True)
 
+    # NOTA (19/09/2026): estes três campos NÃO são mais usados — a prestação
+    # de contas passou a ser por alocação principal (ver Alocacao abaixo),
+    # já que cada responsável envia a prestação da própria verba, não do
+    # projeto inteiro. Mantidos na tabela sem uso pra evitar uma migração
+    # destrutiva; podem ser removidos numa limpeza futura.
     status_prestacao_contas = db.Column(db.String(20), nullable=True)
     motivo_reprovacao_prestacao = db.Column(db.Text, nullable=True)
     enviada_em_prestacao = db.Column(db.DateTime(timezone=True), nullable=True)
@@ -133,11 +131,6 @@ class TipoAlocacao(db.Model):
 class Centro(db.Model):
     __tablename__ = "centro"
 
-    # Cadastro simples de centros/departamentos/subprojetos que o admin
-    # mantém e reaproveita ao criar alocações principais — evita digitar o
-    # nome toda vez e permite que o mesmo professor/coordenador apareça
-    # vinculado a centros diferentes em projetos diferentes (decisão de
-    # 19/08/2026).
     id = db.Column(db.Integer, primary_key=True)
     nome = db.Column(db.String(150), nullable=False, unique=True)
     ativo = db.Column(db.Boolean, nullable=False, default=True)
@@ -157,34 +150,21 @@ class Alocacao(db.Model):
     valor_alocado = db.Column(db.Numeric(12, 2), nullable=False)
     papel_projeto = db.Column(db.String(20), nullable=True)
     motivo_reprovacao = db.Column(db.Text, nullable=True)
-
-    # Só usado em alocações principais (Nível 1): identifica o centro/
-    # subprojeto pro qual a verba foi destinada dentro do projeto maior.
-    # Opcional — nem todo projeto precisa dessa granularidade.
     centro_id = db.Column(db.Integer, db.ForeignKey("centro.id"), nullable=True)
 
-    # Estrutura em 2 níveis (RF01, decisão de 10/08/2026):
-    # - Nível 1 ("alocação principal"): alocacao_pai_id é None. Representa a
-    #   verba destinada a um usuário específico dentro do projeto — só o
-    #   admin cria, e nasce sem tipo_alocacao_id (só o valor bruto).
-    # - Nível 2 ("sub-alocação"): alocacao_pai_id aponta pra uma alocação
-    #   nível 1. Representa como o dono da alocação principal decidiu
-    #   dividir a própria verba por tipo de despesa — só o dono da alocação
-    #   principal cria, sempre com tipo_alocacao_id preenchido.
-    # Registros de antes dessa mudança já têm tipo_alocacao_id preenchido,
-    # então continuam funcionando como sub-alocações válidas sem precisar de
-    # nenhuma migração de dados.
-    #
-    # A categoria de cada alocação individual é sempre custeio OU capital
-    # (nunca "ambos" — essa opção existe só no projeto). Quando o projeto é
-    # "ambos", quem cria a alocação principal escolhe qual das duas; nos
-    # outros casos ela herda automaticamente a categoria única do projeto.
     alocacao_pai_id = db.Column(db.Integer, db.ForeignKey("alocacao.id"), nullable=True)
 
-    # aprovada = pode receber despesa (se tiver tipo) ou já é uma alocação
-    # principal liberada; pendente = sub-alocação aguardando o admin revisar;
-    # reprovada = negada, com motivo em motivo_reprovacao.
     status = db.Column(db.String(20), nullable=False, default="aprovada")
+
+    # Prestação de contas desta verba (só faz sentido em alocações principais
+    # — Nível 1, alocacao_pai_id is None). Cada responsável envia a
+    # prestação da própria verba dentro do projeto; o admin aprova ou
+    # reprova cada uma individualmente. O encerramento do projeto continua
+    # sendo uma ação manual do admin, independente do status aqui (decisão
+    # de 19/09/2026).
+    status_prestacao_contas = db.Column(db.String(20), nullable=True)
+    motivo_reprovacao_prestacao = db.Column(db.Text, nullable=True)
+    enviada_em_prestacao = db.Column(db.DateTime(timezone=True), nullable=True)
 
     projeto = db.relationship("Projeto", back_populates="alocacoes")
     usuario = db.relationship("Usuario", back_populates="alocacoes")
@@ -196,6 +176,7 @@ class Alocacao(db.Model):
     CATEGORIAS_VALIDAS = ("custeio", "capital")
     PAPEIS_PROJETO_VALIDOS = ("coordenador", "pesquisador", "bolsista", "tecnico", "colaborador")
     STATUS_VALIDOS = ("aprovada", "pendente", "reprovada")
+    STATUS_PRESTACAO_VALIDOS = ("em_analise", "aceita", "reprovada")
 
     __table_args__ = (
         db.CheckConstraint("valor_alocado >= 0", name="ck_alocacao_valor_positivo"),
@@ -210,6 +191,11 @@ class Alocacao(db.Model):
         db.CheckConstraint(
             "status IN ('aprovada', 'pendente', 'reprovada')",
             name="ck_alocacao_status_valido",
+        ),
+        db.CheckConstraint(
+            "status_prestacao_contas IS NULL OR status_prestacao_contas IN "
+            "('em_analise', 'aceita', 'reprovada')",
+            name="ck_alocacao_status_prestacao_contas_valido",
         ),
     )
 

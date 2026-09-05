@@ -10,6 +10,10 @@
             <div style="display:flex; gap:8px; align-items:center; margin-bottom:10px; flex-wrap:wrap;">
                 <span class="badge badge-indigo mono">{{ codigo_projeto }}</span>
                 <span class="badge badge-{{ cor_status }}"><span class="badge-dot"></span>{{ projeto.status | rotulo }}</span>
+                {% if alocacao_principal and alocacao_principal.status_prestacao_contas %}
+                {% set cor_prestacao = {"em_analise": "laranja", "aceita": "verde", "reprovada": "vermelho"}.get(alocacao_principal.status_prestacao_contas, "cinza") %}
+                <span class="badge badge-{{ cor_prestacao }}"><span class="badge-dot"></span>Prestação: {{ alocacao_principal.status_prestacao_contas | rotulo }}</span>
+                {% endif %}
             </div>
             <h1 style="font-size:22px; margin:0 0 4px 0;">{{ responsavel.nome }}</h1>
             <p class="link-muted" style="margin:0;">Alocações e despesas dentro do projeto <strong>{{ projeto.nome }}</strong></p>
@@ -18,11 +22,37 @@
             {% if total_alocacoes_usuario >= 2 %}
             <a href="{{ url_for('remanejamentos.solicitar_remanejamento', projeto_id=projeto.id) }}" class="btn-sm">Remanejar verba</a>
             {% endif %}
-            {% if projeto.status == "ativo" and projeto.status_prestacao_contas != "em_analise" %}
+            {% if projeto.status == "ativo" and not (alocacao_principal and alocacao_principal.status_prestacao_contas == "em_analise") %}
             <a href="{{ url_for('despesas.nova_despesa_projeto', projeto_id=projeto.id) }}" class="btn-link-primario">+ Lançar Despesa</a>
             {% endif %}
         </div>
     </div>
+
+    {% if alocacao_principal %}
+    <div style="margin-top:16px; padding-top:14px; border-top:1px solid var(--border);">
+        {% if alocacao_principal.status_prestacao_contas == "em_analise" %}
+            <p class="flash sucesso" style="margin:0;">Sua prestação de contas foi enviada e está aguardando análise do administrador.</p>
+        {% elif alocacao_principal.status_prestacao_contas == "reprovada" %}
+            <p class="flash erro" style="margin:0 0 8px 0;">
+                Prestação de contas reprovada{% if alocacao_principal.motivo_reprovacao_prestacao %}: {{ alocacao_principal.motivo_reprovacao_prestacao }}{% else %}.{% endif %}
+            </p>
+            {% if current_user.id == responsavel.id %}
+            <form method="POST" action="{{ url_for('prestacoes.enviar', alocacao_id=alocacao_principal.id) }}"
+                  onsubmit="return confirm('Reenviar a prestação de contas para análise do administrador?');">
+                <button type="submit" class="btn-sm">Reenviar prestação de contas</button>
+            </form>
+            {% endif %}
+        {% elif alocacao_principal.status_prestacao_contas == "aceita" %}
+            <p class="flash sucesso" style="margin:0;">✅ Prestação de contas aceita.</p>
+        {% elif projeto.status == "ativo" and current_user.id == responsavel.id %}
+            <form method="POST" action="{{ url_for('prestacoes.enviar', alocacao_id=alocacao_principal.id) }}"
+                  onsubmit="return confirm('Enviar sua prestação de contas para análise do administrador?');">
+                <button type="submit">Enviar prestação de contas</button>
+            </form>
+        {% endif %}
+        <a href="{{ url_for('relatorios.relatorio_alocacao', alocacao_id=alocacao_principal.id) }}" class="btn-link-secundario" style="display:inline-block; margin-top:10px;">📄 Baixar minha prestação de contas (PDF)</a>
+    </div>
+    {% endif %}
 </div>
 
 <div style="display:flex; gap:16px; align-items:flex-start; flex-wrap:wrap; margin-bottom:20px;">

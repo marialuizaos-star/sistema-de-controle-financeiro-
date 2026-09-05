@@ -2,7 +2,6 @@
 {% block titulo %}{{ projeto.nome }} — SCF PROPI{% endblock %}
 {% block conteudo %}
 {% set cor_status = {"ativo": "verde", "pendente_aprovacao": "laranja", "reprovado": "vermelho", "inativo": "cinza", "encerrado": "cinza"}.get(projeto.status, "cinza") %}
-{% set pode_enviar_prestacao = projeto.criado_por_id and current_user.id == projeto.criado_por_id %}
 
 <a href="{{ url_for('projetos.listar_projetos') }}" class="btn-link-secundario" style="margin-bottom:14px; display:inline-block; padding:6px 14px; font-size:12px;">← Projetos</a>
 
@@ -12,10 +11,6 @@
             <div style="display:flex; gap:8px; align-items:center; margin-bottom:10px; flex-wrap:wrap;">
                 <span class="badge badge-indigo mono">{{ codigo_projeto }}</span>
                 <span class="badge badge-{{ cor_status }}"><span class="badge-dot"></span>{{ projeto.status | rotulo }}</span>
-                {% if projeto.status_prestacao_contas %}
-                {% set cor_prestacao = {"em_analise": "laranja", "aceita": "verde", "reprovada": "vermelho"}.get(projeto.status_prestacao_contas, "cinza") %}
-                <span class="badge badge-{{ cor_prestacao }}"><span class="badge-dot"></span>Prestação: {{ projeto.status_prestacao_contas | rotulo }}</span>
-                {% endif %}
             </div>
             <h1 style="font-size:22px; margin:0 0 12px 0;">{{ projeto.nome }}</h1>
             <div style="display:flex; gap:32px; flex-wrap:wrap;">
@@ -31,7 +26,7 @@
                 </div>
             </div>
         </div>
-        {% if projeto.status == "ativo" and projeto.status_prestacao_contas != "em_analise" %}
+        {% if projeto.status == "ativo" %}
         <a href="{{ url_for('despesas.nova_despesa_projeto', projeto_id=projeto.id) }}" class="btn-link-primario">+ Lançar Despesa</a>
         {% endif %}
     </div>
@@ -57,35 +52,6 @@
         <p class="flash erro" style="margin-top:16px;">
             Este projeto foi reprovado{% if projeto.motivo_reprovacao %}: {{ projeto.motivo_reprovacao }}{% else %}.{% endif %}
         </p>
-    {% elif projeto.status == "ativo" %}
-        {% if projeto.status_prestacao_contas == "em_analise" %}
-            <div style="display:flex; gap:10px; margin-top:16px;">
-                <form method="POST" action="{{ url_for('prestacoes.aprovar', projeto_id=projeto.id) }}"
-                      onsubmit="return confirm('Aceitar esta prestação de contas? O projeto será encerrado.');">
-                    <button type="submit" class="sucesso">Aceitar prestação de contas</button>
-                </form>
-                <a href="{{ url_for('prestacoes.reprovar', projeto_id=projeto.id) }}" class="btn-link-primario-perigo">Reprovar prestação de contas</a>
-            </div>
-        {% elif projeto.status_prestacao_contas == "reprovada" %}
-            <p class="flash erro" style="margin-top:16px;">
-                Prestação de contas reprovada{% if projeto.motivo_reprovacao_prestacao %}: {{ projeto.motivo_reprovacao_prestacao }}{% else %}.{% endif %}
-            </p>
-            {% if pode_enviar_prestacao %}
-            <form method="POST" action="{{ url_for('prestacoes.enviar', projeto_id=projeto.id) }}" style="margin-top:8px;"
-                  onsubmit="return confirm('Reenviar a prestação de contas para análise do administrador?');">
-                <button type="submit" class="btn-sm">Reenviar prestação de contas</button>
-            </form>
-            {% endif %}
-        {% elif pode_enviar_prestacao %}
-            <div style="margin-top:16px;">
-                <form method="POST" action="{{ url_for('prestacoes.enviar', projeto_id=projeto.id) }}"
-                      onsubmit="return confirm('Enviar a prestação de contas para análise do administrador?');">
-                    <button type="submit">Enviar prestação de contas</button>
-                </form>
-            </div>
-        {% endif %}
-    {% elif projeto.status == "encerrado" and projeto.status_prestacao_contas == "aceita" %}
-        <p class="flash sucesso" style="margin-top:16px;">✅ Prestação de contas aceita. Projeto encerrado.</p>
     {% endif %}
 
     <div style="display:flex; justify-content:space-between; align-items:center; margin-top:16px; padding-top:14px; border-top:1px solid var(--border);">
@@ -101,7 +67,7 @@
     </div>
 </div>
 
-<div class="stat-grid" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+<div class="stat-grid">
     <div class="stat-card">
         <div class="stat-card-top"><span class="stat-label">Valor total</span><span class="stat-icon stat-icon-indigo">💰</span></div>
         <div class="stat-value">R$ {{ projeto.valor_total | moeda }}</div>
@@ -156,6 +122,7 @@
             <th>Usuário responsável</th>
             <th>Categoria</th>
             <th>Status</th>
+            <th>Prestação de contas</th>
             <th>Valor alocado</th>
             <th style="text-align:right">Ações</th>
         </tr>
@@ -171,14 +138,29 @@
                 {% set cor_st = {"aprovada": "verde", "pendente": "laranja", "reprovada": "vermelho"}.get(alocacao.status, "cinza") %}
                 <span class="badge badge-{{ cor_st }}"><span class="badge-dot"></span>{{ alocacao.status | capitalize }}</span>
             </td>
+            <td>
+                {% if alocacao.status_prestacao_contas %}
+                {% set cor_prest = {"em_analise": "laranja", "aceita": "verde", "reprovada": "vermelho"}.get(alocacao.status_prestacao_contas, "cinza") %}
+                <span class="badge badge-{{ cor_prest }}"><span class="badge-dot"></span>{{ alocacao.status_prestacao_contas | rotulo }}</span>
+                {% else %}
+                <span class="link-muted" style="font-size:12px;">Não enviada</span>
+                {% endif %}
+            </td>
             <td class="mono"><strong>R$ {{ alocacao.valor_alocado | moeda }}</strong></td>
             <td style="text-align:right" class="impede-clique-linha">
+                {% if alocacao.status_prestacao_contas == "em_analise" %}
+                <form method="POST" action="{{ url_for('prestacoes.aprovar', alocacao_id=alocacao.id) }}" style="display:inline;"
+                      onsubmit="return confirm('Aceitar a prestação de contas de {{ alocacao.usuario.nome }}?');">
+                    <button type="submit" class="btn-sm" style="background-color: #28a745; border-color: #28a745; color: white;">Aceitar prestação</button>
+                </form>
+                <a href="{{ url_for('prestacoes.reprovar', alocacao_id=alocacao.id) }}" class="btn-sm" style="background-color: #dc3545; border-color: #dc3545; color: white;">Reprovar</a>
+                {% endif %}
                 <a href="{{ url_for('alocacoes.nova_sub_alocacao', alocacao_pai_id=alocacao.id) }}" class="btn-sm" style="background-color: #0ea5e9; border-color: #0ea5e9; color: white;">+ Alocação</a>
                 <a href="{{ url_for('alocacoes.editar_alocacao', alocacao_id=alocacao.id) }}" class="btn-sm">Editar</a>
             </td>
         </tr>
         {% else %}
-        <tr><td colspan="5" class="link-muted">Nenhuma alocação cadastrada ainda.</td></tr>
+        <tr><td colspan="6" class="link-muted">Nenhuma alocação cadastrada ainda.</td></tr>
         {% endfor %}
     </table>
 </div>
@@ -186,14 +168,12 @@
 <div class="card">
     <div style="display:flex; justify-content:space-between; align-items:center;">
         <h2 style="margin:0;">Despesas Lançadas</h2>
-        {% if projeto.status == "ativo" and projeto.status_prestacao_contas != "em_analise" %}
+        {% if projeto.status == "ativo" %}
         <a href="{{ url_for('despesas.nova_despesa_projeto', projeto_id=projeto.id) }}" class="btn-link-primario">+ Lançar Despesa</a>
         {% endif %}
     </div>
     {% if projeto.status in ("pendente_aprovacao", "reprovado") %}
     <p class="link-muted" style="margin-top:14px;">O lançamento de despesas fica disponível depois que o projeto for aprovado.</p>
-    {% elif projeto.status_prestacao_contas == "em_analise" %}
-    <p class="link-muted" style="margin-top:14px;">O lançamento de despesas fica bloqueado enquanto a prestação de contas está em análise.</p>
     {% endif %}
     <table style="margin-top:14px;">
         <tr>

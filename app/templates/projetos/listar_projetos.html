@@ -47,7 +47,7 @@
             <th>Código</th>
             <th>Título</th>
             <th>Vigência</th>
-            <th>Valor total</th>
+            <th>{{ "Valor total" if current_user.papel == "administrador" else "Seu valor alocado" }}</th>
             <th>Status</th>
             <th style="text-align:right">Ações</th>
         </tr>
@@ -58,7 +58,13 @@
             <td class="mono">{{ codigos[projeto.id] }}</td>
             <td>{{ projeto.nome }}</td>
             <td class="mono">{{ projeto.vigencia_inicio.strftime('%d/%m/%Y') }} → {{ projeto.vigencia_fim.strftime('%d/%m/%Y') }}</td>
-            <td class="mono">R$ {{ projeto.valor_total | moeda }}</td>
+            <td class="mono">
+                {% if current_user.papel == "administrador" %}
+                R$ {{ projeto.valor_total | moeda }}
+                {% else %}
+                R$ {{ valores_usuario[projeto.id] | moeda }}
+                {% endif %}
+            </td>
             <td><span class="badge badge-{{ cor }}"><span class="badge-dot"></span>{{ projeto.status | rotulo }}</span></td>
             <td style="text-align:right"><a href="{{ url_for('projetos.detalhe_projeto', projeto_id=projeto.id) }}" class="btn-sm impede-clique-linha">Ver</a></td>
         </tr>

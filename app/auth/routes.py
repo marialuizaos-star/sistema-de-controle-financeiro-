@@ -233,11 +233,12 @@ def painel():
     if current_user.senha_provisoria:
         return redirect(url_for("auth.trocar_senha_obrigatoria"))
 
-    from app.projetos.routes import _codigo_projeto
+    from app.projetos.routes import _codigo_projeto, _valor_alocado_usuario
 
     painel_geral = None
     projetos = None
     codigos = {}
+    valores_usuario = {}
 
     if current_user.papel == "administrador":
         painel_geral = _resumo_painel_geral()
@@ -251,11 +252,13 @@ def painel():
             .all()
         )
         codigos = {p.id: _codigo_projeto(p) for p in projetos}
+        valores_usuario = {p.id: _valor_alocado_usuario(p.id, current_user.id) for p in projetos}
 
     projetos_vencendo = _projetos_vencendo_em_breve()
 
     return render_template(
         "auth/painel.html", projetos=projetos, painel_geral=painel_geral, codigos=codigos,
+        valores_usuario=valores_usuario,
         projetos_vencendo=projetos_vencendo, hoje=date.today(),
     )
 

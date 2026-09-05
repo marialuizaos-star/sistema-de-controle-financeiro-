@@ -207,6 +207,8 @@ def detalhe_responsavel(projeto_id, usuario_id):
         .all()
     )
 
+    alocacao_principal = alocacoes_principais[0] if len(alocacoes_principais) == 1 else None
+
     todas_sub = []
     for a in alocacoes_principais:
         todas_sub.extend(a.sub_alocacoes)
@@ -239,6 +241,7 @@ def detalhe_responsavel(projeto_id, usuario_id):
         codigo_projeto=_codigo_projeto(projeto),
         responsavel=responsavel,
         alocacoes_principais=alocacoes_principais,
+        alocacao_principal=alocacao_principal,
         despesas=despesas,
         valor_total=valor_total,
         total_alocado=total_alocado,
@@ -268,9 +271,6 @@ def editar_alocacao(alocacao_id):
         flash("Sem permissão para editar esta alocação.", "erro")
         return redirect(url_for("projetos.detalhe_projeto", projeto_id=alocacao.projeto_id))
 
-    # Depois de aprovada, o dono não pode mais editar — mudar valor/tipo
-    # nesse ponto contornaria a aprovação do administrador. O admin continua
-    # podendo corrigir a qualquer momento, se necessário.
     if not eh_admin and alocacao.status == "aprovada":
         flash("Esta alocação já foi aprovada e não pode mais ser editada.", "erro")
         return redirect(url_for("alocacoes.detalhe_responsavel", projeto_id=alocacao.projeto_id, usuario_id=current_user.id))

@@ -1,29 +1,46 @@
 {% extends "base_app.html" %}
-{% block titulo %}Prestações de contas pendentes — SCF PROPEG{% endblock %}
+{% block titulo %}Prestações de contas pendentes — SCF PROPI{% endblock %}
 {% block conteudo %}
-<a href="{{ url_for('projetos.listar_projetos') }}" class="btn-link-secundario" style="margin-bottom:14px; display:inline-block; padding:6px 14px; font-size:12px;">← Projetos</a>
+<div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:20px;">
+    <div>
+        <h1 style="font-size:22px; margin:0 0 4px 0;">Prestações de Contas Pendentes</h1>
+        <p class="link-muted" style="margin:0;">Aguardando revisão e aprovação do administrador</p>
+    </div>
+    <a href="{{ url_for('projetos.listar_projetos') }}" class="btn-link-secundario">Ir para Projetos</a>
+</div>
 
-<div class="card">
-    <h2>Prestações de contas aguardando análise</h2>
-    <p class="link-muted">Projetos cuja prestação de contas foi enviada e ainda não foi aceita nem reprovada.</p>
+<div class="card" style="padding:0;">
     <table>
         <tr>
             <th>Projeto</th>
-            <th>Solicitante</th>
+            <th>Responsável</th>
             <th>Enviada em</th>
             <th style="text-align:right">Ações</th>
         </tr>
-        {% for projeto in projetos %}
-        <tr class="linha-clicavel" data-href="{{ url_for('projetos.detalhe_projeto', projeto_id=projeto.id) }}">
-            <td>{{ projeto.nome }}</td>
-            <td>{{ projeto.criado_por.nome if projeto.criado_por else "—" }}</td>
-            <td class="mono">{{ projeto.enviada_em_prestacao.strftime('%d/%m/%Y %H:%M') if projeto.enviada_em_prestacao else "—" }}</td>
-            <td style="text-align:right" class="impede-clique-linha">
-                <a href="{{ url_for('projetos.detalhe_projeto', projeto_id=projeto.id) }}" class="btn-sm">Revisar</a>
+        {% for alocacao in alocacoes %}
+        <tr>
+            <td>
+                <a href="{{ url_for('alocacoes.detalhe_responsavel', projeto_id=alocacao.projeto_id, usuario_id=alocacao.usuario_id) }}" style="text-decoration:none; color: #0056b3;">
+                    {{ alocacao.projeto.nome }}
+                </a>
+            </td>
+            <td>{{ alocacao.usuario.nome }}</td>
+            <td class="mono">{{ alocacao.enviada_em_prestacao.strftime('%d/%m/%Y %H:%M') if alocacao.enviada_em_prestacao else "—" }}</td>
+            <td style="text-align:right;">
+                <div style="display:flex; gap:8px; justify-content:flex-end;">
+                    <form method="POST" action="{{ url_for('prestacoes.aprovar', alocacao_id=alocacao.id) }}" style="margin:0;">
+                        <button type="submit" class="btn-sm" style="background-color: #28a745; border-color: #28a745; color: white;">Aceitar</button>
+                    </form>
+                    <a href="{{ url_for('prestacoes.reprovar', alocacao_id=alocacao.id) }}" class="btn-sm" style="background-color: #dc3545; border-color: #dc3545; color: white; display: inline-flex; align-items: center; text-decoration: none;">Reprovar</a>
+                </div>
             </td>
         </tr>
         {% else %}
-        <tr><td colspan="4" class="link-muted">Nenhuma prestação de contas pendente no momento.</td></tr>
+        <tr>
+            <td colspan="4" class="link-muted" style="padding:16px; text-align:center;">
+                Nenhuma prestação de contas aguardando análise no momento.
+            </td>
+        </tr>
         {% endfor %}
     </table>
 </div>
