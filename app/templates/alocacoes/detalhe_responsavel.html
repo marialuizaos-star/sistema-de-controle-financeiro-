@@ -1,5 +1,5 @@
 {% extends "base_app.html" %}
-{% block titulo %}{{ responsavel.nome }} — {{ projeto.nome }} — SCF PROPI{% endblock %}
+{% block titulo %}{{ responsavel.nome }} — {{ projeto.nome }} — SCF PROPPI{% endblock %}
 {% block conteudo %}
 {% set cor_status = {"ativo": "verde", "pendente_aprovacao": "laranja", "reprovado": "vermelho", "inativo": "cinza", "encerrado": "cinza"}.get(projeto.status, "cinza") %}
 <a href="{{ url_for('projetos.listar_projetos') }}" class="btn-link-secundario" style="margin-bottom:14px; display:inline-block; padding:6px 14px; font-size:12px;">← Projetos</a>
