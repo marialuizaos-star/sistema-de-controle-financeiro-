@@ -62,7 +62,6 @@
 
         <label>Comprovante (PDF ou imagem) *</label>
         <div class="upload-area" onclick="document.getElementById('campo-comprovante').click()">
-            <span style="font-size:20px;">📎</span>
             <div><strong>Clique para selecionar o comprovante</strong></div>
             <div class="link-muted" style="font-size:12px;">PDF, JPG ou PNG</div>
             <div class="link-muted" id="nome-arquivo-selecionado" style="font-size:12px; margin-top:6px;"></div>
@@ -112,7 +111,7 @@
             </td>
             <td>{{ despesa.alocacao.tipo_alocacao.nome if despesa.alocacao.tipo_alocacao else "—" }}</td>
             <td>{{ despesa.alocacao.usuario.nome }}</td>
-            <td><a href="{{ url_for('despesas.ver_comprovante', despesa_id=despesa.id) }}" target="_blank" class="btn-sm impede-clique-linha">📎 Ver</a></td>
+            <td><a href="{{ url_for('despesas.ver_comprovante', despesa_id=despesa.id) }}" target="_blank" class="btn-sm impede-clique-linha">Ver</a></td>
             <td class="mono">R$ {{ despesa.valor | moeda }}</td>
             <td>
                 <span class="badge badge-{{ cor_despesa }}"><span class="badge-dot"></span>{{ despesa.status | rotulo }}</span>
@@ -149,7 +148,7 @@
         function atualizarAviso() {
             var texto = mapaDocumentos[campoAlocacao.value];
             if (texto) {
-                avisoDiv.textContent = '⚠️ ' + texto;
+                avisoDiv.textContent = texto;
                 avisoDiv.style.display = 'block';
             } else {
                 avisoDiv.style.display = 'none';

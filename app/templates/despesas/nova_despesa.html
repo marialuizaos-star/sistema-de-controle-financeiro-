@@ -9,7 +9,7 @@
 </p>
 
 {% if aviso_documentos %}
-<div class="flash" style="background: var(--warning-soft); color: var(--warning); margin-bottom:0;">⚠️ {{ aviso_documentos }}</div>
+<div class="flash" style="background: var(--warning-soft); color: var(--warning); margin-bottom:0;">{{ aviso_documentos }}</div>
 {% endif %}
 
 <div class="stat-grid">
@@ -73,7 +73,6 @@
 
         <label>Comprovante (PDF ou imagem) *</label>
         <div class="upload-area" onclick="document.getElementById('campo-comprovante').click()">
-            <span style="font-size:20px;">📎</span>
             <div><strong>Clique para selecionar o comprovante</strong></div>
             <div class="link-muted" style="font-size:12px;">PDF, JPG ou PNG</div>
             <div class="link-muted" id="nome-arquivo-selecionado" style="font-size:12px; margin-top:6px;"></div>
@@ -115,7 +114,7 @@
                 {% if despesa.motivo_status %}<div class="link-muted" style="font-size:11px; margin-top:3px;">{{ despesa.motivo_status }}</div>{% endif %}
             </td>
             <td style="text-align:right" class="impede-clique-linha">
-                <a href="{{ url_for('despesas.ver_comprovante', despesa_id=despesa.id) }}" target="_blank" class="btn-sm">📎 Ver</a>
+                <a href="{{ url_for('despesas.ver_comprovante', despesa_id=despesa.id) }}" target="_blank" class="btn-sm">Ver</a>
                 {% if current_user.papel == "administrador" and despesa.status == "lancada" %}
                 <div class="menu-dropdown" style="display:inline-block;">
                     <button type="button" class="menu-dropdown-btn" aria-label="Mais opções">☰</button>

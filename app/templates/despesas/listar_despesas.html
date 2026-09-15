@@ -31,7 +31,7 @@
                 <span class="badge badge-{{ cor_despesa }}"><span class="badge-dot"></span>{{ despesa.status | rotulo }}</span>
                 {% if despesa.motivo_status %}<div class="link-muted" style="font-size:11px; margin-top:3px;">{{ despesa.motivo_status }}</div>{% endif %}
             </td>
-            <td style="text-align:right"><a href="{{ url_for('despesas.ver_comprovante', despesa_id=despesa.id) }}" target="_blank" class="btn-sm impede-clique-linha">📎 Ver</a></td>
+            <td style="text-align:right"><a href="{{ url_for('despesas.ver_comprovante', despesa_id=despesa.id) }}" target="_blank" class="btn-sm impede-clique-linha">Ver</a></td>
         </tr>
         {% else %}
         <tr><td colspan="9" class="link-muted">Nenhuma despesa lançada ainda.</td></tr>

@@ -12,7 +12,7 @@
 
 {% if projetos_vencendo %}
 <div class="card" style="border-left: 4px solid var(--warning); background: var(--warning-soft);">
-    <h2 style="color: var(--warning);">⚠️ Vigência terminando em breve</h2>
+    <h2 style="color: var(--warning);">Vigência terminando em breve</h2>
     <table>
         <tr>
             <th>Projeto</th>
@@ -46,7 +46,6 @@
     <div class="stat-card">
         <div class="stat-card-top">
             <span class="stat-label">Total de projetos</span>
-            <span class="stat-icon stat-icon-indigo">📋</span>
         </div>
         <div class="stat-value">{{ painel_geral.resumo_projetos | length }}</div>
         <div class="stat-sub">ativos</div>
@@ -54,7 +53,6 @@
     <div class="stat-card">
         <div class="stat-card-top">
             <span class="stat-label">Total administrado</span>
-            <span class="stat-icon stat-icon-green">💰</span>
         </div>
         <div class="stat-value">R$ {{ painel_geral.total_administrado | moeda }}</div>
         <div class="stat-sub">captado nos projetos ativos</div>
@@ -62,7 +60,6 @@
     <div class="stat-card">
         <div class="stat-card-top">
             <span class="stat-label">Total gasto</span>
-            <span class="stat-icon stat-icon-orange">📦</span>
         </div>
         <div class="stat-value">R$ {{ painel_geral.total_gasto_geral | moeda }}</div>
         <div class="stat-sub">em despesas lançadas</div>
@@ -70,7 +67,6 @@
     <div class="stat-card">
         <div class="stat-card-top">
             <span class="stat-label">Saldo geral</span>
-            <span class="stat-icon stat-icon-blue">🏦</span>
         </div>
         <div class="stat-value">R$ {{ painel_geral.saldo_geral | moeda }}</div>
         <div class="stat-sub">a comprometer</div>

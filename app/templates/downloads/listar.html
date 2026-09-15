@@ -36,7 +36,7 @@
         </tr>
         {% for documento in documentos %}
         <tr class="linha-clicavel" data-href="{{ url_for('downloads.baixar', documento_id=documento.id) }}">
-            <td>📄 {{ documento.titulo }}</td>
+            <td>{{ documento.titulo }}</td>
             <td class="link-muted">{{ documento.descricao or "—" }}</td>
             <td style="text-align:right" class="impede-clique-linha">
                 <a href="{{ url_for('downloads.baixar', documento_id=documento.id) }}" class="btn-sm">Baixar</a>

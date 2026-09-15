@@ -33,10 +33,10 @@
 
     <div style="margin-top:16px; padding-top:14px; border-top:1px solid var(--border); display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
         {% if projeto.arquivo_instrucoes %}
-        <a href="{{ url_for('projetos.ver_instrucoes', projeto_id=projeto.id) }}" target="_blank" class="btn-sm">📄 {{ projeto.instrucoes_nome_original }}</a>
+        <a href="{{ url_for('projetos.ver_instrucoes', projeto_id=projeto.id) }}" target="_blank" class="btn-sm">{{ projeto.instrucoes_nome_original }}</a>
         <a href="{{ url_for('projetos.enviar_instrucoes', projeto_id=projeto.id) }}" class="btn-sm btn-sm-cinza">Substituir instruções</a>
         {% else %}
-        <a href="{{ url_for('projetos.enviar_instrucoes', projeto_id=projeto.id) }}" class="btn-sm btn-sm-cinza">📄 Enviar documento de instruções</a>
+        <a href="{{ url_for('projetos.enviar_instrucoes', projeto_id=projeto.id) }}" class="btn-sm btn-sm-cinza">Enviar documento de instruções</a>
         {% endif %}
     </div>
 
@@ -69,28 +69,28 @@
 
 <div class="stat-grid">
     <div class="stat-card">
-        <div class="stat-card-top"><span class="stat-label">Valor total</span><span class="stat-icon stat-icon-indigo">💰</span></div>
+        <div class="stat-card-top"><span class="stat-label">Valor total</span></div>
         <div class="stat-value">R$ {{ projeto.valor_total | moeda }}</div>
     </div>
     <div class="stat-card">
-        <div class="stat-card-top"><span class="stat-label">Total alocado</span><span class="stat-icon stat-icon-blue">📋</span></div>
+        <div class="stat-card-top"><span class="stat-label">Total alocado</span></div>
         <div class="stat-value">R$ {{ total_alocado | moeda }}</div>
         <div class="stat-sub">planejado</div>
     </div>
     <div class="stat-card">
-        <div class="stat-card-top"><span class="stat-label">Saldo alocável</span><span class="stat-icon stat-icon-green">🏦</span></div>
+        <div class="stat-card-top"><span class="stat-label">Saldo alocável</span></div>
         <div class="stat-value">R$ {{ saldo_nao_alocado | moeda }}</div>
     </div>
     <div class="stat-card">
-        <div class="stat-card-top"><span class="stat-label">Total empenhado</span><span class="stat-icon stat-icon-orange">📦</span></div>
+        <div class="stat-card-top"><span class="stat-label">Total empenhado</span></div>
         <div class="stat-value">R$ {{ total_despesas | moeda }}</div>
     </div>
     <div class="stat-card">
-        <div class="stat-card-top"><span class="stat-label">Saldo disponível</span><span class="stat-icon stat-icon-green">✅</span></div>
+        <div class="stat-card-top"><span class="stat-label">Saldo disponível</span></div>
         <div class="stat-value">R$ {{ saldo_disponivel | moeda }}</div>
     </div>
     <div class="stat-card">
-        <div class="stat-card-top"><span class="stat-label">Total devolvido</span><span class="stat-icon stat-icon-blue">↩️</span></div>
+        <div class="stat-card-top"><span class="stat-label">Total devolvido</span></div>
         <div class="stat-value">R$ {{ total_devolvido | moeda }}</div>
     </div>
 </div>
@@ -198,7 +198,7 @@
             </td>
             <td>{{ despesa.alocacao.tipo_alocacao.nome if despesa.alocacao.tipo_alocacao else "—" }}</td>
             <td>{{ despesa.alocacao.usuario.nome }}</td>
-            <td><a href="{{ url_for('despesas.ver_comprovante', despesa_id=despesa.id) }}" target="_blank" class="btn-sm impede-clique-linha">📎 Ver</a></td>
+            <td><a href="{{ url_for('despesas.ver_comprovante', despesa_id=despesa.id) }}" target="_blank" class="btn-sm impede-clique-linha">Ver</a></td>
             <td class="mono">R$ {{ despesa.valor | moeda }}</td>
             <td>
                 <span class="badge badge-{{ cor_despesa }}"><span class="badge-dot"></span>{{ despesa.status | rotulo }}</span>
@@ -222,7 +222,7 @@
     </table>
 </div>
 
-<a href="{{ url_for('relatorios.relatorio_projeto', projeto_id=projeto.id) }}" class="btn-link-secundario" style="display:inline-block;">📄 Baixar prestação de contas (PDF)</a>
+<a href="{{ url_for('relatorios.relatorio_projeto', projeto_id=projeto.id) }}" class="btn-link-secundario" style="display:inline-block;">Baixar prestação de contas (PDF)</a>
 
 {% if grafico_labels %}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
