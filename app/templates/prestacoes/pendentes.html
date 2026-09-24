@@ -1,13 +1,10 @@
 {% extends "base_app.html" %}
-{% block titulo %}Prestações de contas pendentes — SCF PROPPI{% endblock %}
+{% block titulo %}Prestações de contas pendentes — SCF PROPI{% endblock %}
 {% block conteudo %}
-<div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:20px;">
-    <div>
-        <h1 style="font-size:22px; margin:0 0 4px 0;">Prestações de Contas Pendentes</h1>
-        <p class="link-muted" style="margin:0;">Aguardando revisão e aprovação do administrador</p>
-    </div>
-    <a href="{{ url_for('projetos.listar_projetos') }}" class="btn-link-secundario">Ir para Projetos</a>
-</div>
+<a href="{{ url_for('projetos.listar_projetos') }}" class="btn-link-secundario" style="margin-bottom:14px; display:inline-block;">← Voltar para Projetos</a>
+
+<h1 style="font-size:20px; margin:0 0 4px 0;">Prestações de Contas Pendentes</h1>
+<p class="link-muted" style="margin:0 0 20px 0;">Aguardando revisão e aprovação do administrador</p>
 
 <div class="card" style="padding:0;">
     <table>
@@ -15,29 +12,55 @@
             <th>Projeto</th>
             <th>Responsável</th>
             <th>Enviada em</th>
+            <th>Comprovativos</th>
+            <th style="text-align:right">Valor Prestado</th>
+            <th style="text-align:right">A restituir</th>
             <th style="text-align:right">Ações</th>
         </tr>
         {% for alocacao in alocacoes %}
+        {% set partes_nome = alocacao.usuario.nome.split() %}
+        {% set iniciais = (partes_nome[0][0] + (partes_nome[-1][0] if partes_nome|length > 1 else '')) | upper %}
+        {% set r = resumos[alocacao.id] %}
         <tr>
             <td>
-                <a href="{{ url_for('alocacoes.detalhe_responsavel', projeto_id=alocacao.projeto_id, usuario_id=alocacao.usuario_id) }}" style="text-decoration:none; color: #0056b3;">
+                <a href="{{ url_for('projetos.detalhe_projeto', projeto_id=alocacao.projeto_id) }}" style="text-decoration:none; color: #0056b3;">
                     {{ alocacao.projeto.nome }}
                 </a>
             </td>
-            <td>{{ alocacao.usuario.nome }}</td>
-            <td class="mono">{{ alocacao.enviada_em_prestacao.strftime('%d/%m/%Y %H:%M') if alocacao.enviada_em_prestacao else "—" }}</td>
-            <td style="text-align:right;">
-                <div style="display:flex; gap:8px; justify-content:flex-end;">
-                    <form method="POST" action="{{ url_for('prestacoes.aprovar', alocacao_id=alocacao.id) }}" style="margin:0;">
-                        <button type="submit" class="btn-sm" style="background-color: #28a745; border-color: #28a745; color: white;">Aceitar</button>
-                    </form>
-                    <a href="{{ url_for('prestacoes.reprovar', alocacao_id=alocacao.id) }}" class="btn-sm" style="background-color: #dc3545; border-color: #dc3545; color: white; display: inline-flex; align-items: center; text-decoration: none;">Reprovar</a>
+            <td>
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <span style="width:28px; height:28px; border-radius:50%; background:var(--accent); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:10.5px; flex-shrink:0;">{{ iniciais }}</span>
+                    <div>
+                        <div style="font-weight:600;">{{ alocacao.usuario.nome }}</div>
+                        {% if alocacao.papel_projeto %}<div class="link-muted" style="font-size:11px;">{{ alocacao.papel_projeto | rotulo }}</div>{% endif %}
+                    </div>
                 </div>
+            </td>
+            <td class="mono" style="font-size:12.5px;">{{ alocacao.enviada_em_prestacao.strftime('%d/%m/%Y %H:%M') if alocacao.enviada_em_prestacao else "—" }}</td>
+            <td>
+                <a href="{{ url_for('prestacoes.auditar', alocacao_id=alocacao.id) }}" class="btn-sm" style="display:inline-flex; align-items:center; gap:5px;">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                    {{ r.total_comprovantes }} arquivo{{ "s" if r.total_comprovantes != 1 else "" }}
+                </a>
+            </td>
+            <td class="mono" style="text-align:right; font-weight:600;">R$ {{ r.total_prestado | moeda }}</td>
+            <td class="mono" style="text-align:right;">
+                {% if r.saldo_restituir > 0 %}
+                <span style="color: var(--warning);">R$ {{ r.saldo_restituir | moeda }}</span>
+                {% else %}
+                <span class="link-muted">—</span>
+                {% endif %}
+            </td>
+            <td style="text-align:right;">
+                <a href="{{ url_for('prestacoes.auditar', alocacao_id=alocacao.id) }}" class="btn-sm" style="background: var(--navy); color: #fff; display:inline-flex; align-items:center; gap:6px;">
+                    Analisar Prestação
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                </a>
             </td>
         </tr>
         {% else %}
         <tr>
-            <td colspan="4" class="link-muted" style="padding:16px; text-align:center;">
+            <td colspan="7" class="link-muted" style="padding:16px; text-align:center;">
                 Nenhuma prestação de contas aguardando análise no momento.
             </td>
         </tr>

@@ -5,7 +5,7 @@ from flask_login import login_required, current_user
 from sqlalchemy import extract
 
 from app.extensions import db
-from app.models import Projeto, Alocacao, Despesa, TipoAlocacao
+from app.models import Projeto, Alocacao, Despesa, TipoAlocacao, SolicitacaoRemanejamento
 from app.projetos.forms import ProjetoForm, ReprovarProjetoForm, EnviarInstrucoesForm
 
 projetos_bp = Blueprint("projetos", __name__, template_folder="../templates/projetos")
@@ -39,10 +39,6 @@ def _codigo_projeto(projeto):
 
 
 def _valor_alocado_usuario(projeto_id, usuario_id):
-    """Soma das alocações principais (Nível 1) desse usuário nesse projeto —
-    é o que o usuário externo deve ver como 'valor' na listagem de projetos,
-    já que o valor total do projeto (verba global) é informação só do
-    administrador (decisão de 19/09/2026)."""
     total = (
         db.session.query(db.func.coalesce(db.func.sum(Alocacao.valor_alocado), 0))
         .filter(
@@ -74,11 +70,19 @@ def listar_projetos():
     projetos = sorted(projetos, key=lambda p: codigos[p.id], reverse=True)
 
     valores_usuario = {}
-    if not eh_admin:
+    contagens_pendentes = None
+    if eh_admin:
+        contagens_pendentes = {
+            "alocacoes": Alocacao.query.filter_by(status="pendente").count(),
+            "remanejamentos": SolicitacaoRemanejamento.query.filter_by(status="pendente").count(),
+            "prestacoes": Alocacao.query.filter_by(status_prestacao_contas="em_analise").count(),
+        }
+    else:
         valores_usuario = {p.id: _valor_alocado_usuario(p.id, current_user.id) for p in projetos}
 
     return render_template(
-        "projetos/listar_projetos.html", projetos=projetos, codigos=codigos, valores_usuario=valores_usuario
+        "projetos/listar_projetos.html", projetos=projetos, codigos=codigos,
+        valores_usuario=valores_usuario, contagens_pendentes=contagens_pendentes,
     )
 
 

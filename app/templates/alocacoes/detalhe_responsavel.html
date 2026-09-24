@@ -1,5 +1,5 @@
 {% extends "base_app.html" %}
-{% block titulo %}{{ responsavel.nome }} — {{ projeto.nome }} — SCF PROPPI{% endblock %}
+{% block titulo %}{{ responsavel.nome }} — {{ projeto.nome }} — SCF PROPI{% endblock %}
 {% block conteudo %}
 {% set cor_status = {"ativo": "verde", "pendente_aprovacao": "laranja", "reprovado": "vermelho", "inativo": "cinza", "encerrado": "cinza"}.get(projeto.status, "cinza") %}
 <a href="{{ url_for('projetos.listar_projetos') }}" class="btn-link-secundario" style="margin-bottom:14px; display:inline-block; padding:6px 14px; font-size:12px;">← Projetos</a>
@@ -43,14 +43,14 @@
             </form>
             {% endif %}
         {% elif alocacao_principal.status_prestacao_contas == "aceita" %}
-            <p class="flash sucesso" style="margin:0;">Prestação de contas aceita.</p>
+            <p class="flash sucesso" style="margin:0;">✅ Prestação de contas aceita.</p>
         {% elif projeto.status == "ativo" and current_user.id == responsavel.id %}
             <form method="POST" action="{{ url_for('prestacoes.enviar', alocacao_id=alocacao_principal.id) }}"
                   onsubmit="return confirm('Enviar sua prestação de contas para análise do administrador?');">
                 <button type="submit">Enviar prestação de contas</button>
             </form>
         {% endif %}
-        <a href="{{ url_for('relatorios.relatorio_alocacao', alocacao_id=alocacao_principal.id) }}" class="btn-link-secundario" style="display:inline-block; margin-top:10px;">Baixar minha prestação de contas (PDF)</a>
+        <a href="{{ url_for('relatorios.relatorio_alocacao', alocacao_id=alocacao_principal.id) }}" class="btn-link-secundario" style="display:inline-block; margin-top:10px;">📄 Baixar minha prestação de contas (PDF)</a>
     </div>
     {% endif %}
 </div>
@@ -58,28 +58,28 @@
 <div style="display:flex; gap:16px; align-items:flex-start; flex-wrap:wrap; margin-bottom:20px;">
     <div class="stat-grid" style="flex:2; min-width:320px; margin-bottom:0;">
         <div class="stat-card">
-            <div class="stat-card-top"><span class="stat-label">Valor total</span></div>
+            <div class="stat-card-top"><span class="stat-label">Valor total</span><span class="stat-icon stat-icon-indigo">💰</span></div>
             <div class="stat-value">R$ {{ valor_total | moeda }}</div>
         </div>
         <div class="stat-card">
-            <div class="stat-card-top"><span class="stat-label">Total alocado</span></div>
+            <div class="stat-card-top"><span class="stat-label">Total alocado</span><span class="stat-icon stat-icon-blue">📋</span></div>
             <div class="stat-value">R$ {{ total_alocado | moeda }}</div>
             <div class="stat-sub">planejado</div>
         </div>
         <div class="stat-card">
-            <div class="stat-card-top"><span class="stat-label">Saldo alocável</span></div>
+            <div class="stat-card-top"><span class="stat-label">Saldo alocável</span><span class="stat-icon stat-icon-green">🏦</span></div>
             <div class="stat-value">R$ {{ saldo_alocavel | moeda }}</div>
         </div>
         <div class="stat-card">
-            <div class="stat-card-top"><span class="stat-label">Total empenhado</span></div>
+            <div class="stat-card-top"><span class="stat-label">Total empenhado</span><span class="stat-icon stat-icon-orange">📦</span></div>
             <div class="stat-value">R$ {{ total_empenhado | moeda }}</div>
         </div>
         <div class="stat-card">
-            <div class="stat-card-top"><span class="stat-label">Saldo disponível</span></div>
+            <div class="stat-card-top"><span class="stat-label">Saldo disponível</span><span class="stat-icon stat-icon-green">✅</span></div>
             <div class="stat-value">R$ {{ saldo_disponivel | moeda }}</div>
         </div>
         <div class="stat-card">
-            <div class="stat-card-top"><span class="stat-label">Total devolvido</span></div>
+            <div class="stat-card-top"><span class="stat-label">Total devolvido</span><span class="stat-icon stat-icon-blue">↩️</span></div>
             <div class="stat-value">R$ {{ total_devolvido | moeda }}</div>
         </div>
     </div>
@@ -152,6 +152,36 @@
     {% endfor %}
 </div>
 
+{% if remanejamentos %}
+<div class="card">
+    <h2>Remanejamentos solicitados</h2>
+    <table style="margin-top:14px;">
+        <tr>
+            <th>De</th>
+            <th>Para</th>
+            <th>Valor</th>
+            <th>Justificativa</th>
+            <th>Status</th>
+        </tr>
+        {% for r in remanejamentos %}
+        {% set cor_r = {"pendente": "laranja", "aprovado": "verde", "reprovado": "vermelho"}.get(r.status, "cinza") %}
+        <tr>
+            <td>{{ r.alocacao_origem.tipo_alocacao.nome if r.alocacao_origem.tipo_alocacao else "—" }}</td>
+            <td>{{ r.alocacao_destino.tipo_alocacao.nome if r.alocacao_destino.tipo_alocacao else "—" }}</td>
+            <td class="mono">R$ {{ r.valor | moeda }}</td>
+            <td>{{ r.justificativa or "—" }}</td>
+            <td>
+                <span class="badge badge-{{ cor_r }}"><span class="badge-dot"></span>{{ r.status | capitalize }}</span>
+                {% if r.motivo_reprovacao %}
+                <div class="link-muted" style="font-size:11px; margin-top:3px;">Motivo: {{ r.motivo_reprovacao }}</div>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+</div>
+{% endif %}
+
 <div class="card">
     <h2>Despesas Lançadas</h2>
     <table style="margin-top:14px;">
@@ -175,7 +205,7 @@
                 {% if despesa.cpf_favorecido %}<div class="link-muted" style="font-size:11px;">{{ despesa.cpf_favorecido }}</div>{% endif %}
             </td>
             <td>{{ despesa.alocacao.tipo_alocacao.nome if despesa.alocacao.tipo_alocacao else "—" }}</td>
-            <td><a href="{{ url_for('despesas.ver_comprovante', despesa_id=despesa.id) }}" target="_blank" class="btn-sm impede-clique-linha">Ver</a></td>
+            <td><a href="{{ url_for('despesas.ver_comprovante', despesa_id=despesa.id) }}" target="_blank" class="btn-sm impede-clique-linha">📎 Ver</a></td>
             <td class="mono">R$ {{ despesa.valor | moeda }}</td>
             <td>
                 <span class="badge badge-{{ cor_despesa }}"><span class="badge-dot"></span>{{ despesa.status | rotulo }}</span>

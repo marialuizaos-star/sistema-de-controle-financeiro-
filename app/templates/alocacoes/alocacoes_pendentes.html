@@ -1,10 +1,45 @@
 {% extends "base_app.html" %}
-{% block titulo %}Alocações Pendentes — SCF PROPPI{% endblock %}
+{% block titulo %}Alocações Pendentes — SCF PROPI{% endblock %}
 {% block conteudo %}
 <style>
     summary { list-style: none; }
     summary::-webkit-details-marker { display: none; }
     details[open] .seta { transform: rotate(180deg); }
+
+    .avatar-iniciais {
+        width: 34px; height: 34px; border-radius: 50%; background: var(--accent);
+        color: #fff; display: inline-flex; align-items: center; justify-content: center;
+        font-weight: 700; font-size: 12px; flex-shrink: 0;
+    }
+    .btn-icone {
+        display: inline-flex; align-items: center; justify-content: center;
+        width: 30px; height: 30px; border-radius: 999px; border: none;
+        font-size: 14px; font-weight: 700; cursor: pointer; margin: 0; padding: 0;
+        text-decoration: none;
+    }
+    .checkbox-linha { width: 16px; height: 16px; cursor: pointer; }
+
+    .barra-lote {
+        position: fixed; left: 50%; bottom: 22px; transform: translate(-50%, 100px);
+        opacity: 0; pointer-events: none; transition: transform .18s ease, opacity .18s ease;
+        background: var(--navy); color: #fff; border-radius: 999px; padding: 10px 12px 10px 20px;
+        display: flex; align-items: center; gap: 14px; box-shadow: 0 10px 30px rgba(0,0,0,.25); z-index: 60;
+    }
+    .barra-lote.visivel { transform: translate(-50%, 0); opacity: 1; pointer-events: auto; }
+    .barra-lote .btn-lote { margin: 0; padding: 8px 16px; border-radius: 999px; font-size: 13px; font-weight: 700; cursor: pointer; border: none; }
+    .barra-lote .btn-aprovar-lote { background: var(--success); color: #fff; }
+    .barra-lote .btn-reprovar-lote { background: rgba(255,255,255,0.14); color: #fff; }
+
+    .modal-overlay {
+        position: fixed; inset: 0; background: rgba(20,27,71,0.5); z-index: 100;
+        display: none; align-items: center; justify-content: center; padding: 20px;
+    }
+    .modal-overlay.aberto { display: flex; }
+    .modal-caixa { background: #fff; border-radius: 14px; padding: 24px; max-width: 420px; width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,.3); }
+    .modal-caixa h3 { margin: 0 0 10px 0; font-size: 17px; }
+    .modal-caixa p { margin: 0 0 14px 0; font-size: 14px; color: var(--muted); line-height: 1.4; }
+    .modal-caixa textarea { width: 100%; min-height: 90px; box-sizing: border-box; }
+    .modal-acoes { display: flex; gap: 10px; margin-top: 16px; }
 </style>
 
 <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:20px;">
@@ -16,44 +51,57 @@
 </div>
 
 {% for usuario_id, dados in agrupado.items() %}
-<details class="card" style="margin-bottom:12px;">
+{% set partes_nome = dados.usuario.nome.split() %}
+{% set iniciais = (partes_nome[0][0] + (partes_nome[-1][0] if partes_nome|length > 1 else '')) | upper %}
+<details class="card" style="margin-bottom:12px;" open>
     <summary style="cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
-        <div>
-            <strong style="font-size:15px;">{{ dados.usuario.nome }}</strong>
-            <span class="link-muted" style="margin-left:8px;">{{ dados.alocacoes|length }} pendente{{ "s" if dados.alocacoes|length != 1 else "" }} — R$ {{ dados.total | moeda }}</span>
+        <div style="display:flex; align-items:center; gap:12px;">
+            <span class="avatar-iniciais">{{ iniciais }}</span>
+            <div>
+                <strong style="font-size:15px;">{{ dados.usuario.nome }}</strong>
+                <span class="badge badge-laranja" style="margin-left:8px;"><span class="badge-dot"></span>{{ dados.alocacoes|length }} pendente{{ "s" if dados.alocacoes|length != 1 else "" }}</span>
+            </div>
         </div>
-        <span class="seta link-muted" style="transition: transform 0.15s;">▾</span>
+        <div style="display:flex; align-items:center; gap:16px;">
+            <span class="mono" style="font-weight:700;">R$ {{ dados.total | moeda }}</span>
+            <span class="seta link-muted" style="transition: transform 0.15s;">▾</span>
+        </div>
     </summary>
 
     <div style="margin-top:14px; padding-top:14px; border-top:1px solid var(--border);">
-        <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px;">
-            <form method="POST" action="{{ url_for('alocacoes.aprovar_todas_pendentes', usuario_id=usuario_id) }}"
-                  onsubmit="return confirm('Aprovar todas as {{ dados.alocacoes|length }} alocações pendentes de {{ dados.usuario.nome }}?');" style="margin:0;">
-                <button type="submit" class="btn-sm" style="background-color: #28a745; border-color: #28a745; color: white; margin-top:0;">✓ Aprovar tudo de {{ dados.usuario.nome }}</button>
-            </form>
-            <a href="{{ url_for('alocacoes.reprovar_todas_pendentes', usuario_id=usuario_id) }}" class="btn-sm" style="background-color: #dc3545; border-color: #dc3545; color: white; display:inline-flex; align-items:center; text-decoration:none;">✗ Reprovar tudo de {{ dados.usuario.nome }}</a>
-        </div>
+        <label style="display:flex; align-items:center; gap:8px; font-weight:600; font-size:13px; margin-bottom:10px;">
+            <input type="checkbox" class="checkbox-linha chk-selecionar-todas" data-grupo="{{ usuario_id }}">
+            Selecionar todas deste responsável
+        </label>
 
         <table>
             <tr>
+                <th style="width:30px;"></th>
                 <th>Projeto</th>
                 <th>Tipo de Despesa</th>
+                <th>Saldo da rubrica</th>
                 <th>Valor Solicitado</th>
                 <th style="text-align:right">Ações</th>
             </tr>
             {% for alocacao in dados.alocacoes %}
             <tr>
                 <td>
+                    <input type="checkbox" class="checkbox-linha chk-alocacao" data-grupo="{{ usuario_id }}"
+                           data-id="{{ alocacao.id }}" data-valor="{{ alocacao.valor_alocado }}">
+                </td>
+                <td>
                     <a href="{{ url_for('projetos.detalhe_projeto', projeto_id=alocacao.projeto.id) }}" style="text-decoration:none; color: #0056b3;">{{ alocacao.projeto.nome }}</a>
                 </td>
                 <td>{{ alocacao.tipo_alocacao.nome }}</td>
+                <td class="link-muted" style="font-size:12px;">R$ {{ saldos_pai[alocacao.id] | moeda }} livres</td>
                 <td class="mono" style="font-weight:500;">R$ {{ alocacao.valor_alocado | moeda }}</td>
                 <td style="text-align:right;">
-                    <div style="display:flex; gap:8px; justify-content:flex-end;">
-                        <form method="POST" action="{{ url_for('alocacoes.aprovar_alocacao', alocacao_id=alocacao.id) }}" style="margin:0;">
-                            <button type="submit" class="btn-sm" style="background-color: #28a745; border-color: #28a745; color: white;">Aprovar</button>
+                    <div style="display:flex; gap:6px; justify-content:flex-end;">
+                        <form method="POST" action="{{ url_for('alocacoes.aprovar_alocacao', alocacao_id=alocacao.id) }}" style="margin:0;"
+                              onsubmit="return confirm('Aprovar esta alocação de R$ {{ alocacao.valor_alocado | moeda }}?');">
+                            <button type="submit" class="btn-icone btn-sm-sucesso" title="Aprovar">✓</button>
                         </form>
-                        <a href="{{ url_for('alocacoes.reprovar_alocacao', alocacao_id=alocacao.id) }}" class="btn-sm" style="background-color: #dc3545; border-color: #dc3545; color: white; display: inline-flex; align-items: center; text-decoration: none;">Reprovar</a>
+                        <a href="{{ url_for('alocacoes.reprovar_alocacao', alocacao_id=alocacao.id) }}" class="btn-icone btn-sm-perigo" title="Reprovar">✕</a>
                     </div>
                 </td>
             </tr>
@@ -66,4 +114,118 @@
     <p class="link-muted" style="padding:16px; text-align:center; margin:0;">Nenhuma alocação aguardando aprovação no momento.</p>
 </div>
 {% endfor %}
+
+<div class="barra-lote" id="barra-lote">
+    <span id="resumo-selecao">0 selecionada(s) — R$ 0,00</span>
+    <button type="button" class="btn-lote btn-aprovar-lote" onclick="abrirModalAprovar()">Aprovar selecionadas</button>
+    <button type="button" class="btn-lote btn-reprovar-lote" onclick="abrirModalReprovar()">Reprovar selecionadas</button>
+</div>
+
+<div class="modal-overlay" id="modal-aprovar">
+    <div class="modal-caixa">
+        <h3>Confirmar aprovação em lote</h3>
+        <p id="texto-confirmacao-aprovar"></p>
+        <form method="POST" action="{{ url_for('alocacoes.aprovar_selecionadas') }}" id="form-aprovar-lote">
+            <div id="campos-ids-aprovar"></div>
+            <div class="modal-acoes">
+                <button type="submit" class="sucesso">Confirmar aprovação</button>
+                <button type="button" class="btn-link-secundario" style="margin-top:0;" onclick="fecharModais()">Cancelar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="modal-overlay" id="modal-reprovar">
+    <div class="modal-caixa">
+        <h3>Reprovar em lote</h3>
+        <p id="texto-confirmacao-reprovar"></p>
+        <form method="POST" action="{{ url_for('alocacoes.reprovar_selecionadas') }}" id="form-reprovar-lote">
+            <div id="campos-ids-reprovar"></div>
+            <label style="display:block; margin-bottom:6px; font-size:13px; font-weight:600;">Motivo da reprovação / devolução</label>
+            <textarea name="motivo" required placeholder="Explique o motivo — a pessoa verá esta mensagem"></textarea>
+            <div class="modal-acoes">
+                <button type="submit" class="perigo">Confirmar reprovação</button>
+                <button type="button" class="btn-link-secundario" style="margin-top:0;" onclick="fecharModais()">Cancelar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    function _formatarMoeda(valor) {
+        return valor.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function selecionadas() {
+        return Array.from(document.querySelectorAll('.chk-alocacao:checked'));
+    }
+
+    function atualizarBarra() {
+        var marcadas = selecionadas();
+        var barra = document.getElementById('barra-lote');
+        var resumo = document.getElementById('resumo-selecao');
+        if (marcadas.length === 0) {
+            barra.classList.remove('visivel');
+            return;
+        }
+        var total = marcadas.reduce(function (soma, chk) { return soma + parseFloat(chk.dataset.valor); }, 0);
+        resumo.textContent = marcadas.length + ' selecionada' + (marcadas.length > 1 ? 's' : '') + ' — R$ ' + _formatarMoeda(total);
+        barra.classList.add('visivel');
+    }
+
+    document.querySelectorAll('.chk-alocacao').forEach(function (chk) {
+        chk.addEventListener('change', function () {
+            var grupo = chk.dataset.grupo;
+            var todasDoGrupo = document.querySelectorAll('.chk-alocacao[data-grupo="' + grupo + '"]');
+            var marcadasDoGrupo = document.querySelectorAll('.chk-alocacao[data-grupo="' + grupo + '"]:checked');
+            var checkboxTopo = document.querySelector('.chk-selecionar-todas[data-grupo="' + grupo + '"]');
+            if (checkboxTopo) checkboxTopo.checked = (todasDoGrupo.length === marcadasDoGrupo.length);
+            atualizarBarra();
+        });
+    });
+
+    document.querySelectorAll('.chk-selecionar-todas').forEach(function (chkTopo) {
+        chkTopo.addEventListener('change', function () {
+            var grupo = chkTopo.dataset.grupo;
+            document.querySelectorAll('.chk-alocacao[data-grupo="' + grupo + '"]').forEach(function (chk) {
+                chk.checked = chkTopo.checked;
+            });
+            atualizarBarra();
+        });
+    });
+
+    function preencherIds(containerId) {
+        var container = document.getElementById(containerId);
+        container.innerHTML = '';
+        selecionadas().forEach(function (chk) {
+            var input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'alocacao_ids';
+            input.value = chk.dataset.id;
+            container.appendChild(input);
+        });
+    }
+
+    function abrirModalAprovar() {
+        var marcadas = selecionadas();
+        var total = marcadas.reduce(function (soma, chk) { return soma + parseFloat(chk.dataset.valor); }, 0);
+        document.getElementById('texto-confirmacao-aprovar').textContent =
+            'Tem certeza de que deseja aprovar ' + marcadas.length + ' alocação(ões) no valor total de R$ ' + _formatarMoeda(total) + '?';
+        preencherIds('campos-ids-aprovar');
+        document.getElementById('modal-aprovar').classList.add('aberto');
+    }
+
+    function abrirModalReprovar() {
+        var marcadas = selecionadas();
+        document.getElementById('texto-confirmacao-reprovar').textContent =
+            marcadas.length + ' alocação(ões) serão reprovadas com o mesmo motivo abaixo.';
+        preencherIds('campos-ids-reprovar');
+        document.getElementById('modal-reprovar').classList.add('aberto');
+    }
+
+    function fecharModais() {
+        document.getElementById('modal-aprovar').classList.remove('aberto');
+        document.getElementById('modal-reprovar').classList.remove('aberto');
+    }
+</script>
 {% endblock %}

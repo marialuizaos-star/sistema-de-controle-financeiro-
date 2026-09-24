@@ -23,25 +23,29 @@ def _limpar_cpf(valor):
 
 
 def _validar_cpf(form, campo):
-    if not campo.data:
-        return
-    digitos = _limpar_cpf(campo.data)
-    if len(digitos) != 11:
-        raise ValidationError("CPF deve ter 11 dígitos.")
-    if digitos == digitos[0] * 11:
-        raise ValidationError("CPF inválido.")
-
-    soma = sum(int(digitos[i]) * (10 - i) for i in range(9))
-    resto = (soma * 10) % 11
-    digito1 = 0 if resto == 10 else resto
-    if digito1 != int(digitos[9]):
-        raise ValidationError("CPF inválido.")
-
-    soma = sum(int(digitos[i]) * (11 - i) for i in range(10))
-    resto = (soma * 10) % 11
-    digito2 = 0 if resto == 10 else resto
-    if digito2 != int(digitos[10]):
-        raise ValidationError("CPF inválido.")
+    # DESATIVADO TEMPORARIAMENTE (apresentação) — reativar o bloco de
+    # validação de dígitos verificadores depois. Código original comentado
+    # abaixo, pronto para restaurar.
+    return
+    # if not campo.data:
+    #     return
+    # digitos = _limpar_cpf(campo.data)
+    # if len(digitos) != 11:
+    #     raise ValidationError("CPF deve ter 11 dígitos.")
+    # if digitos == digitos[0] * 11:
+    #     raise ValidationError("CPF inválido.")
+    #
+    # soma = sum(int(digitos[i]) * (10 - i) for i in range(9))
+    # resto = (soma * 10) % 11
+    # digito1 = 0 if resto == 10 else resto
+    # if digito1 != int(digitos[9]):
+    #     raise ValidationError("CPF inválido.")
+    #
+    # soma = sum(int(digitos[i]) * (11 - i) for i in range(10))
+    # resto = (soma * 10) % 11
+    # digito2 = 0 if resto == 10 else resto
+    # if digito2 != int(digitos[10]):
+    #     raise ValidationError("CPF inválido.")
 
 
 class LoginForm(FlaskForm):

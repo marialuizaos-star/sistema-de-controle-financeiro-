@@ -1,38 +1,156 @@
 {% extends "base_app.html" %}
-{% block titulo %}Remanejamentos pendentes — SCF PROPPI{% endblock %}
+{% block titulo %}Remanejamentos pendentes — SCF PROPI{% endblock %}
 {% block conteudo %}
+<style>
+    .rem-card { border: 1px solid var(--border); border-radius: 14px; margin-bottom: 14px; overflow: hidden; }
+    .rem-cabecalho {
+        display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;
+        padding: 14px 18px; background: #F8FAFC; border-bottom: 1px solid var(--border);
+    }
+    .rem-solicitante { display: flex; align-items: center; gap: 10px; }
+    .rem-avatar {
+        width: 32px; height: 32px; border-radius: 50%; background: var(--accent);
+        color: #fff; display: flex; align-items: center; justify-content: center;
+        font-weight: 700; font-size: 11px; flex-shrink: 0;
+    }
+    .rem-data { font-size: 12px; color: var(--muted); }
+    .rem-corpo { padding: 16px 18px; }
+    .rem-fluxo { display: flex; align-items: stretch; gap: 12px; flex-wrap: wrap; }
+    .rem-rubrica {
+        flex: 1; min-width: 220px; border-radius: 10px; padding: 12px 14px;
+    }
+    .rem-rubrica.origem { background: var(--danger-soft); }
+    .rem-rubrica.destino { background: var(--success-soft); }
+    .rem-rubrica-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+    .rem-rubrica.origem .rem-rubrica-label { color: var(--danger); }
+    .rem-rubrica.destino .rem-rubrica-label { color: var(--success); }
+    .rem-rubrica-nome { font-weight: 600; font-size: 13.5px; margin-top: 4px; color: var(--ink); }
+    .rem-rubrica-saldo { font-size: 11.5px; color: var(--muted); margin-top: 4px; }
+    .rem-conector { display: flex; align-items: center; justify-content: center; flex-direction: column; min-width: 90px; }
+    .rem-conector-valor { font-size: 12px; font-weight: 700; color: var(--accent); white-space: nowrap; }
+    .rem-justificativa {
+        display: flex; gap: 10px; align-items: flex-start; margin-top: 14px;
+        background: #F8FAFC; border-radius: 10px; padding: 10px 14px; font-size: 12.5px; color: var(--ink);
+    }
+    .rem-justificativa svg { flex-shrink: 0; margin-top: 2px; color: var(--muted); }
+    .rem-rodape {
+        display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;
+        padding: 12px 18px; border-top: 1px solid var(--border);
+    }
+    .rem-valor-total { font-size: 13px; }
+    .rem-valor-total .mono { font-size: 16px; font-weight: 700; }
+    .btn-rem-aprovar {
+        margin: 0; padding: 8px 18px; border-radius: 999px; border: none; cursor: pointer;
+        background: var(--success); color: #fff; font-size: 13px; font-weight: 700;
+        display: inline-flex; align-items: center; gap: 6px;
+    }
+    .btn-rem-aprovar:hover { background: #15803D; }
+    .btn-rem-reprovar {
+        margin: 0; padding: 8px 18px; border-radius: 999px; cursor: pointer; text-decoration: none;
+        background: #fff; color: var(--ink); border: 1px solid var(--border); font-size: 13px; font-weight: 700;
+        display: inline-flex; align-items: center; gap: 6px;
+    }
+    .btn-rem-reprovar:hover { background: var(--gray-soft); border-color: var(--muted); }
+
+    .modal-overlay { position: fixed; inset: 0; background: rgba(20,27,71,0.5); z-index: 100; display: none; align-items: center; justify-content: center; padding: 20px; }
+    .modal-overlay.aberto { display: flex; }
+    .modal-caixa { background: #fff; border-radius: 14px; padding: 24px; max-width: 440px; width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,.3); }
+    .modal-caixa h3 { margin: 0 0 10px 0; font-size: 17px; }
+    .modal-caixa p { margin: 0; font-size: 14px; color: var(--ink); line-height: 1.5; }
+    .modal-acoes { display: flex; gap: 10px; margin-top: 20px; }
+</style>
+
 <a href="{{ url_for('projetos.listar_projetos') }}" class="btn-link-secundario" style="margin-bottom:14px; display:inline-block;">← Voltar para Projetos</a>
 
-<div class="card">
-    <h2>Remanejamentos aguardando aprovação</h2>
-    <p class="link-muted">Pedidos de movimentação de verba entre alocações, enviados por usuários.</p>
-    <table>
-        <tr>
-            <th>Projeto</th>
-            <th>Solicitante</th>
-            <th>De</th>
-            <th>Para</th>
-            <th>Valor</th>
-            <th style="text-align:right">Ações</th>
-        </tr>
-        {% for remanejamento in remanejamentos %}
-        <tr class="linha-clicavel" data-href="{{ url_for('projetos.detalhe_projeto', projeto_id=remanejamento.projeto_id) }}">
-            <td>{{ remanejamento.projeto.nome }}</td>
-            <td>{{ remanejamento.solicitado_por.nome }}</td>
-            <td>{{ remanejamento.alocacao_origem.tipo_alocacao.nome if remanejamento.alocacao_origem.tipo_alocacao else "—" }}</td>
-            <td>{{ remanejamento.alocacao_destino.tipo_alocacao.nome if remanejamento.alocacao_destino.tipo_alocacao else "—" }}</td>
-            <td class="mono">R$ {{ remanejamento.valor | moeda }}</td>
-            <td style="text-align:right" class="impede-clique-linha">
-                <form method="POST" action="{{ url_for('remanejamentos.aprovar_remanejamento', remanejamento_id=remanejamento.id) }}" style="display:inline"
-                      onsubmit="return confirm('Aprovar e executar este remanejamento?');">
-                    <button type="submit" class="btn-sm btn-sm-sucesso">Aprovar</button>
-                </form>
-                <a href="{{ url_for('remanejamentos.reprovar_remanejamento', remanejamento_id=remanejamento.id) }}" class="btn-sm btn-sm-perigo">Reprovar</a>
-            </td>
-        </tr>
-        {% else %}
-        <tr><td colspan="6" class="link-muted">Nenhum remanejamento aguardando aprovação no momento.</td></tr>
-        {% endfor %}
-    </table>
+<h1 style="font-size:20px; margin:0 0 4px 0;">Remanejamentos aguardando aprovação</h1>
+<p class="link-muted" style="margin:0 0 20px 0;">Pedidos de movimentação de verba entre alocações, enviados por usuários.</p>
+
+{% for r in remanejamentos %}
+{% set partes_nome = r.solicitado_por.nome.split() %}
+{% set iniciais = (partes_nome[0][0] + (partes_nome[-1][0] if partes_nome|length > 1 else '')) | upper %}
+{% set nome_origem = r.alocacao_origem.tipo_alocacao.nome if r.alocacao_origem.tipo_alocacao else "—" %}
+{% set nome_destino = r.alocacao_destino.tipo_alocacao.nome if r.alocacao_destino.tipo_alocacao else "—" %}
+<div class="rem-card">
+    <div class="rem-cabecalho">
+        <div class="rem-solicitante">
+            <span class="rem-avatar">{{ iniciais }}</span>
+            <div>
+                <strong style="font-size:13.5px;">{{ r.solicitado_por.nome }}</strong>
+                <span class="link-muted" style="font-size:12px;"> · Projeto: <a href="{{ url_for('projetos.detalhe_projeto', projeto_id=r.projeto_id) }}" style="text-decoration:none;">{{ r.projeto.nome }}</a></span>
+            </div>
+        </div>
+        <span class="rem-data">Solicitado em {{ r.criado_em.strftime('%d/%m/%Y, %H:%M') }}</span>
+    </div>
+
+    <div class="rem-corpo">
+        <div class="rem-fluxo">
+            <div class="rem-rubrica origem">
+                <div class="rem-rubrica-label">Origem</div>
+                <div class="rem-rubrica-nome">{{ nome_origem }}</div>
+                <div class="rem-rubrica-saldo">Saldo atual: R$ {{ saldos[r.id].origem | moeda }}</div>
+            </div>
+            <div class="rem-conector">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--accent);"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                <span class="rem-conector-valor">R$ {{ r.valor | moeda }}</span>
+            </div>
+            <div class="rem-rubrica destino">
+                <div class="rem-rubrica-label">Destino</div>
+                <div class="rem-rubrica-nome">{{ nome_destino }}</div>
+                <div class="rem-rubrica-saldo">Saldo atual: R$ {{ saldos[r.id].destino | moeda }}</div>
+            </div>
+        </div>
+
+        {% if r.justificativa %}
+        <div class="rem-justificativa">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            <span><strong>Justificativa:</strong> {{ r.justificativa }}</span>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="rem-rodape">
+        <div class="rem-valor-total">
+            <span class="link-muted">Valor a transferir:</span> <span class="mono">R$ {{ r.valor | moeda }}</span>
+        </div>
+        <div style="display:flex; gap:10px;">
+            <a href="{{ url_for('remanejamentos.reprovar_remanejamento', remanejamento_id=r.id) }}" class="btn-rem-reprovar">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                Reprovar
+            </a>
+            <button type="button" class="btn-rem-aprovar"
+                    onclick="abrirModalAprovar('{{ r.id }}', '{{ r.projeto.nome | e }}', '{{ nome_origem | e }}', '{{ nome_destino | e }}', '{{ r.valor | moeda }}')">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                Aprovar Remanejamento
+            </button>
+        </div>
+    </div>
 </div>
+{% else %}
+<div class="card">
+    <p class="link-muted" style="padding:16px; text-align:center; margin:0;">Nenhum remanejamento aguardando aprovação no momento.</p>
+</div>
+{% endfor %}
+
+<div class="modal-overlay" id="modal-aprovar-rem">
+    <div class="modal-caixa">
+        <h3>Confirmar remanejamento</h3>
+        <p id="texto-modal-aprovar-rem"></p>
+        <form method="POST" id="form-aprovar-rem">
+            <div class="modal-acoes">
+                <button type="submit" class="sucesso">Confirmar</button>
+                <button type="button" class="btn-link-secundario" style="margin-top:0;" onclick="document.getElementById('modal-aprovar-rem').classList.remove('aberto')">Cancelar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    function abrirModalAprovar(id, projeto, origem, destino, valor) {
+        document.getElementById('texto-modal-aprovar-rem').textContent =
+            'Você está transferindo R$ ' + valor + ' do projeto ' + projeto + ' da rubrica "' + origem +
+            '" para a rubrica "' + destino + '". Essa alteração recalcula o saldo disponível imediatamente. Deseja confirmar?';
+        document.getElementById('form-aprovar-rem').action = '/remanejamentos/' + id + '/aprovar';
+        document.getElementById('modal-aprovar-rem').classList.add('aberto');
+    }
+</script>
 {% endblock %}

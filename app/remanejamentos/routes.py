@@ -18,9 +18,6 @@ ROTULOS_CATEGORIA = {
 
 
 def _formatar_moeda(valor):
-    """Mesma formatação usada em todo o sistema (filtro Jinja 'moeda'): milhar
-    com ponto, decimal com vírgula. Reimplementada aqui porque essa função
-    monta texto direto no Python (rótulo de dropdown), fora do template."""
     texto = f"{valor:,.2f}"
     return texto.replace(",", "X").replace(".", ",").replace("X", ".")
 
@@ -150,10 +147,23 @@ def remanejamentos_pendentes():
 
     remanejamentos = (
         SolicitacaoRemanejamento.query.filter_by(status="pendente")
-        .order_by(SolicitacaoRemanejamento.id)
+        .order_by(SolicitacaoRemanejamento.criado_em.desc())
         .all()
     )
-    return render_template("remanejamentos/remanejamentos_pendentes.html", remanejamentos=remanejamentos)
+
+    # Saldo atual (ainda não gasto) das alocações de origem e destino — o
+    # aprovador precisa ver isso antes de decidir, sem precisar navegar
+    # pra outra tela.
+    saldos = {}
+    for r in remanejamentos:
+        saldos[r.id] = {
+            "origem": _saldo_nao_gasto(r.alocacao_origem),
+            "destino": _saldo_nao_gasto(r.alocacao_destino),
+        }
+
+    return render_template(
+        "remanejamentos/remanejamentos_pendentes.html", remanejamentos=remanejamentos, saldos=saldos
+    )
 
 
 @remanejamentos_bp.route("/remanejamentos/<int:remanejamento_id>/aprovar", methods=["POST"])

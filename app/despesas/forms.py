@@ -41,28 +41,31 @@ def _limpar_cnpj(valor):
 
 
 def _validar_cnpj(form, campo):
-    """CNPJ é opcional — só valida se algo foi digitado."""
-    if not campo.data:
-        return
-    digitos = _limpar_cnpj(campo.data)
-    if len(digitos) != 14:
-        raise ValidationError("CNPJ deve ter 14 dígitos.")
-    if digitos == digitos[0] * 14:
-        raise ValidationError("CNPJ inválido.")
-
-    pesos1 = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]
-    soma = sum(int(digitos[i]) * pesos1[i] for i in range(12))
-    resto = soma % 11
-    digito1 = 0 if resto < 2 else 11 - resto
-    if digito1 != int(digitos[12]):
-        raise ValidationError("CNPJ inválido.")
-
-    pesos2 = [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]
-    soma = sum(int(digitos[i]) * pesos2[i] for i in range(13))
-    resto = soma % 11
-    digito2 = 0 if resto < 2 else 11 - resto
-    if digito2 != int(digitos[13]):
-        raise ValidationError("CNPJ inválido.")
+    # DESATIVADO TEMPORARIAMENTE (apresentação) — reativar depois. Código
+    # original comentado abaixo, pronto para restaurar.
+    return
+    # """CNPJ é opcional — só valida se algo foi digitado."""
+    # if not campo.data:
+    #     return
+    # digitos = _limpar_cnpj(campo.data)
+    # if len(digitos) != 14:
+    #     raise ValidationError("CNPJ deve ter 14 dígitos.")
+    # if digitos == digitos[0] * 14:
+    #     raise ValidationError("CNPJ inválido.")
+    #
+    # pesos1 = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]
+    # soma = sum(int(digitos[i]) * pesos1[i] for i in range(12))
+    # resto = soma % 11
+    # digito1 = 0 if resto < 2 else 11 - resto
+    # if digito1 != int(digitos[12]):
+    #     raise ValidationError("CNPJ inválido.")
+    #
+    # pesos2 = [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]
+    # soma = sum(int(digitos[i]) * pesos2[i] for i in range(13))
+    # resto = soma % 11
+    # digito2 = 0 if resto < 2 else 11 - resto
+    # if digito2 != int(digitos[13]):
+    #     raise ValidationError("CNPJ inválido.")
 
 
 def _limpar_cpf(valor):
@@ -72,28 +75,31 @@ def _limpar_cpf(valor):
 
 
 def _validar_cpf(form, campo):
-    """CPF é opcional — só valida se algo foi digitado."""
-    if not campo.data:
-        return
-    digitos = _limpar_cpf(campo.data)
-    if len(digitos) != 11:
-        raise ValidationError("CPF deve ter 11 dígitos.")
-    if digitos == digitos[0] * 11:
-        raise ValidationError("CPF inválido.")
-
-    # Validação do primeiro dígito
-    soma = sum(int(digitos[i]) * (10 - i) for i in range(9))
-    resto = soma % 11
-    digito1 = 0 if resto < 2 else 11 - resto
-    if digito1 != int(digitos[9]):
-        raise ValidationError("CPF inválido.")
-
-    # Validação do segundo dígito
-    soma = sum(int(digitos[i]) * (11 - i) for i in range(10))
-    resto = soma % 11
-    digito2 = 0 if resto < 2 else 11 - resto
-    if digito2 != int(digitos[10]):
-        raise ValidationError("CPF inválido.")
+    # DESATIVADO TEMPORARIAMENTE (apresentação) — reativar depois. Código
+    # original comentado abaixo, pronto para restaurar.
+    return
+    # """CPF é opcional — só valida se algo foi digitado."""
+    # if not campo.data:
+    #     return
+    # digitos = _limpar_cpf(campo.data)
+    # if len(digitos) != 11:
+    #     raise ValidationError("CPF deve ter 11 dígitos.")
+    # if digitos == digitos[0] * 11:
+    #     raise ValidationError("CPF inválido.")
+    #
+    # # Validação do primeiro dígito
+    # soma = sum(int(digitos[i]) * (10 - i) for i in range(9))
+    # resto = soma % 11
+    # digito1 = 0 if resto < 2 else 11 - resto
+    # if digito1 != int(digitos[9]):
+    #     raise ValidationError("CPF inválido.")
+    #
+    # # Validação do segundo dígito
+    # soma = sum(int(digitos[i]) * (11 - i) for i in range(10))
+    # resto = soma % 11
+    # digito2 = 0 if resto < 2 else 11 - resto
+    # if digito2 != int(digitos[10]):
+    #     raise ValidationError("CPF inválido.")
 
 
 class DespesaForm(FlaskForm):

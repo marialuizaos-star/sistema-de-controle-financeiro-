@@ -1,0 +1,93 @@
+{% extends "base_app.html" %}
+{% block titulo %}Auditar prestação — {{ alocacao.usuario.nome }} — SCF PROPI{% endblock %}
+{% block conteudo %}
+<a href="{{ url_for('prestacoes.pendentes') }}" class="btn-link-secundario" style="margin-bottom:14px; display:inline-block;">← Voltar para Prestações Pendentes</a>
+
+{% set partes_nome = alocacao.usuario.nome.split() %}
+{% set iniciais = (partes_nome[0][0] + (partes_nome[-1][0] if partes_nome|length > 1 else '')) | upper %}
+
+<div class="card">
+    <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
+        <span style="width:44px; height:44px; border-radius:50%; background:var(--accent); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:15px; flex-shrink:0;">{{ iniciais }}</span>
+        <div>
+            <h1 style="font-size:20px; margin:0;">{{ alocacao.usuario.nome }}</h1>
+            <p class="link-muted" style="margin:2px 0 0 0;">
+                {% if alocacao.papel_projeto %}{{ alocacao.papel_projeto | rotulo }} · {% endif %}
+                Projeto: <a href="{{ url_for('projetos.detalhe_projeto', projeto_id=alocacao.projeto_id) }}">{{ alocacao.projeto.nome }}</a>
+                · Enviada em {{ alocacao.enviada_em_prestacao.strftime('%d/%m/%Y %H:%M') if alocacao.enviada_em_prestacao else "—" }}
+            </p>
+        </div>
+    </div>
+</div>
+
+<div class="stat-grid">
+    <div class="stat-card">
+        <div class="stat-label">Valor alocado</div>
+        <div class="stat-value">R$ {{ alocacao.valor_alocado | moeda }}</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Valor prestado</div>
+        <div class="stat-value">R$ {{ total_prestado | moeda }}</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">A restituir</div>
+        <div class="stat-value">R$ {{ saldo_restituir | moeda }}</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Comprovantes anexados</div>
+        <div class="stat-value">{{ total_comprovantes }}</div>
+    </div>
+</div>
+
+<div class="card">
+    <h2>Despesas lançadas</h2>
+    <table style="margin-top:14px;">
+        <tr>
+            <th>Data</th>
+            <th>Natureza</th>
+            <th>Favorecido</th>
+            <th>Valor</th>
+            <th>Status</th>
+            <th style="text-align:right">Comprovante</th>
+        </tr>
+        {% for despesa in despesas %}
+        {% set cor_despesa = {"lancada": "verde", "estornada": "cinza", "reprovada": "vermelho"}.get(despesa.status, "cinza") %}
+        <tr>
+            <td class="mono">{{ despesa.data.strftime('%d/%m/%Y') }}</td>
+            <td>{{ despesa.natureza | rotulo }}</td>
+            <td>
+                {{ despesa.fornecedor }}
+                {% if despesa.cnpj_favorecido %}<div class="link-muted" style="font-size:11px;">{{ despesa.cnpj_favorecido }}</div>{% endif %}
+                {% if despesa.cpf_favorecido %}<div class="link-muted" style="font-size:11px;">{{ despesa.cpf_favorecido }}</div>{% endif %}
+            </td>
+            <td class="mono">R$ {{ despesa.valor | moeda }}</td>
+            <td>
+                <span class="badge badge-{{ cor_despesa }}"><span class="badge-dot"></span>{{ despesa.status | rotulo }}</span>
+                {% if despesa.motivo_status %}<div class="link-muted" style="font-size:11px; margin-top:3px;">{{ despesa.motivo_status }}</div>{% endif %}
+            </td>
+            <td style="text-align:right">
+                {% if despesa.comprovante %}
+                <a href="{{ url_for('despesas.ver_comprovante', despesa_id=despesa.id) }}" target="_blank" class="btn-sm">Ver</a>
+                {% else %}
+                <span class="link-muted" style="font-size:12px;">— nenhum</span>
+                {% endif %}
+            </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" class="link-muted">Nenhuma despesa lançada.</td></tr>
+        {% endfor %}
+    </table>
+</div>
+
+<div class="card">
+    <h2>Decisão</h2>
+    <p class="link-muted">Revise as despesas e comprovantes acima antes de decidir.</p>
+    <div style="display:flex; gap:10px; align-items:center;">
+        <form method="POST" action="{{ url_for('prestacoes.aprovar', alocacao_id=alocacao.id) }}"
+              onsubmit="return confirm('Confirma que todos os comprovativos foram validados? Esta ação aprova a prestação de contas.');">
+            <button type="submit" class="btn-link-primario-sucesso">Aprovar Prestação de Contas</button>
+        </form>
+        <a href="{{ url_for('prestacoes.reprovar', alocacao_id=alocacao.id) }}" class="btn-link-secundario" style="margin-top:0;">Reprovar / Solicitar Correção</a>
+    </div>
+</div>
+{% endblock %}

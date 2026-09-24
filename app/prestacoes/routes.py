@@ -1,10 +1,11 @@
 from datetime import datetime, timezone
+from decimal import Decimal
 
 from flask import Blueprint, render_template, redirect, url_for, flash
 from flask_login import login_required, current_user
 
 from app.extensions import db
-from app.models import Alocacao, Projeto
+from app.models import Alocacao, Projeto, Despesa
 from app.prestacoes.forms import ReprovarPrestacaoContasForm
 from app.notificacoes.servicos import notificar_usuario, notificar_administradores
 
@@ -23,10 +24,19 @@ def _eh_alocacao_principal(alocacao):
 
 
 def _pode_enviar_prestacao(alocacao):
-    """Só o próprio responsável pela alocação principal pode enviar a
-    prestação de contas da própria verba (decisão de 19/09/2026: prestação
-    passou a ser por pessoa/alocação, não mais por projeto inteiro)."""
     return _eh_alocacao_principal(alocacao) and current_user.id == alocacao.usuario_id
+
+
+def _resumo_alocacao(alocacao):
+    """Valor prestado, saldo a restituir e nº de comprovantes desta
+    alocação principal — usado tanto na lista de pendentes quanto na
+    tela de auditoria, pra dar contexto financeiro antes da decisão."""
+    ids_alocacoes = [alocacao.id] + [s.id for s in alocacao.sub_alocacoes]
+    despesas = Despesa.query.filter(Despesa.alocacao_id.in_(ids_alocacoes)).all()
+    total_prestado = sum((d.valor for d in despesas if d.status == "lancada"), Decimal("0"))
+    saldo_restituir = alocacao.valor_alocado - total_prestado
+    total_comprovantes = sum(1 for d in despesas if d.comprovante)
+    return despesas, total_prestado, saldo_restituir, total_comprovantes
 
 
 @prestacoes_bp.route("/alocacoes/<int:alocacao_id>/prestacao/enviar", methods=["POST"])
@@ -74,7 +84,37 @@ def pendentes():
         .order_by(Alocacao.enviada_em_prestacao)
         .all()
     )
-    return render_template("prestacoes/pendentes.html", alocacoes=alocacoes)
+
+    resumos = {}
+    for a in alocacoes:
+        _despesas, total_prestado, saldo_restituir, total_comprovantes = _resumo_alocacao(a)
+        resumos[a.id] = {
+            "total_prestado": total_prestado,
+            "saldo_restituir": saldo_restituir,
+            "total_comprovantes": total_comprovantes,
+        }
+
+    return render_template("prestacoes/pendentes.html", alocacoes=alocacoes, resumos=resumos)
+
+
+@prestacoes_bp.route("/alocacoes/<int:alocacao_id>/prestacao/auditar")
+@login_required
+def auditar(alocacao_id):
+    if not _somente_administrador():
+        return redirect(url_for("projetos.listar_projetos"))
+
+    alocacao = db.session.get(Alocacao, alocacao_id)
+    if alocacao is None:
+        flash("Alocação não encontrada.", "erro")
+        return redirect(url_for("prestacoes.pendentes"))
+
+    despesas, total_prestado, saldo_restituir, total_comprovantes = _resumo_alocacao(alocacao)
+
+    return render_template(
+        "prestacoes/auditar.html", alocacao=alocacao, despesas=despesas,
+        total_prestado=total_prestado, saldo_restituir=saldo_restituir,
+        total_comprovantes=total_comprovantes,
+    )
 
 
 @prestacoes_bp.route("/alocacoes/<int:alocacao_id>/prestacao/aprovar", methods=["POST"])
@@ -97,12 +137,12 @@ def aprovar(alocacao_id):
 
     notificar_usuario(
         alocacao.usuario_id,
-        f'Sua prestação de contas no projeto "{alocacao.projeto.nome}" foi aceita.',
+        f'Sua prestação de contas no projeto "{alocacao.projeto.nome}" foi aprovada.',
         link=url_for("alocacoes.detalhe_responsavel", projeto_id=alocacao.projeto_id, usuario_id=alocacao.usuario_id),
     )
 
     db.session.commit()
-    flash("Prestação de contas aceita.", "sucesso")
+    flash("Prestação de contas aprovada.", "sucesso")
     return redirect(url_for("prestacoes.pendentes"))
 
 

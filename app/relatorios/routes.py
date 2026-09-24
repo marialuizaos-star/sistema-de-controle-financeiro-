@@ -1,14 +1,18 @@
 import io
+import os
 from datetime import datetime
 from decimal import Decimal
 
-from flask import Blueprint, send_file, flash, redirect, url_for
+from flask import Blueprint, send_file, flash, redirect, url_for, current_app
 from flask_login import login_required, current_user
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import cm
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.pdfgen import canvas
+from reportlab.lib.utils import ImageReader
+from pypdf import PdfReader, PdfWriter
 
 from app.extensions import db
 from app.models import Projeto, Alocacao, Despesa
@@ -35,6 +39,96 @@ def _responsavel_do_projeto(projeto, alocacoes):
         return projeto.criado_por
     coordenador = next((a for a in alocacoes if a.papel_projeto == "coordenador"), None)
     return coordenador.usuario if coordenador else None
+
+
+def _pagina_imagem_como_pdf(caminho_arquivo):
+    """Converte uma imagem (JPG/PNG) em uma página de PDF (A4, imagem
+    centralizada e redimensionada pra caber dentro da margem), retornando
+    o PDF de uma página só em memória — pronto pra ser mesclado no
+    relatório final."""
+    buffer = io.BytesIO()
+    c = canvas.Canvas(buffer, pagesize=A4)
+    largura_pagina, altura_pagina = A4
+    margem = 1.5 * cm
+
+    imagem = ImageReader(caminho_arquivo)
+    largura_img, altura_img = imagem.getSize()
+
+    max_largura = largura_pagina - 2 * margem
+    max_altura = altura_pagina - 2 * margem
+    escala = min(max_largura / largura_img, max_altura / altura_img)
+    largura_final = largura_img * escala
+    altura_final = altura_img * escala
+
+    x = (largura_pagina - largura_final) / 2
+    y = (altura_pagina - altura_final) / 2
+    c.drawImage(imagem, x, y, width=largura_final, height=altura_final, preserveAspectRatio=True)
+    c.showPage()
+    c.save()
+    buffer.seek(0)
+    return buffer
+
+
+def _anexar_comprovantes(buffer_relatorio, despesas):
+    """Recebe o PDF do relatório já pronto (BytesIO) e anexa em seguida,
+    para cada despesa, uma página de identificação + o comprovante dela.
+    Inclui despesas de qualquer status — lançada, estornada ou reprovada
+    (decisão de 19/09/2026). Comprovante em PDF é mesclado página a
+    página; imagem (PNG/JPG) é convertida numa página de PDF antes de
+    mesclar. Arquivo ausente ou corrompido é pulado, sem quebrar o
+    relatório inteiro."""
+    escritor = PdfWriter()
+
+    for pagina in PdfReader(buffer_relatorio).pages:
+        escritor.add_page(pagina)
+
+    pasta_uploads = current_app.config["UPLOAD_FOLDER"]
+    styles = getSampleStyleSheet()
+
+    for despesa in despesas:
+        if not despesa.comprovante:
+            continue
+
+        caminho = os.path.join(pasta_uploads, despesa.comprovante.arquivo)
+        if not os.path.isfile(caminho):
+            continue
+
+        # Página curta de identificação antes do comprovante, pra dar pra
+        # saber a qual despesa cada comprovante pertence ao folhear o PDF.
+        buffer_capa = io.BytesIO()
+        doc_capa = SimpleDocTemplate(buffer_capa, pagesize=A4, topMargin=2 * cm, bottomMargin=2 * cm)
+        titulo_capa = ParagraphStyle("titulo_capa", parent=styles["Heading2"], fontSize=13, spaceAfter=6)
+        corpo_capa = ParagraphStyle("corpo_capa", parent=styles["Normal"], fontSize=10)
+        elementos_capa = [
+            Paragraph("Comprovante", titulo_capa),
+            Paragraph(f"Data: {despesa.data.strftime('%d/%m/%Y')}", corpo_capa),
+            Paragraph(f"Favorecido: {despesa.fornecedor}", corpo_capa),
+            Paragraph(f"Valor: {_moeda(despesa.valor)}", corpo_capa),
+            Paragraph(f"Status: {ROTULOS.get(despesa.status, despesa.status)}", corpo_capa),
+        ]
+        doc_capa.build(elementos_capa)
+        buffer_capa.seek(0)
+        for pagina in PdfReader(buffer_capa).pages:
+            escritor.add_page(pagina)
+
+        extensao = despesa.comprovante.arquivo.rsplit(".", 1)[-1].lower()
+        try:
+            if extensao == "pdf":
+                for pagina in PdfReader(caminho).pages:
+                    escritor.add_page(pagina)
+            elif extensao in ("png", "jpg", "jpeg"):
+                buffer_img = _pagina_imagem_como_pdf(caminho)
+                for pagina in PdfReader(buffer_img).pages:
+                    escritor.add_page(pagina)
+        except Exception:
+            # Arquivo corrompido/ilegível — a página de identificação já
+            # ficou registrada; só não conseguimos anexar o conteúdo dele.
+            continue
+
+    resultado = io.BytesIO()
+    escritor.write(resultado)
+    resultado.seek(0)
+    return resultado
 
 
 @relatorios_bp.route("/projetos/<int:projeto_id>/relatorio")
@@ -74,7 +168,7 @@ def relatorio_projeto(projeto_id):
 
     elementos = []
     elementos.append(Paragraph("Prestação de Contas", titulo))
-    elementos.append(Paragraph("Sistema de Controle Financeiro — PROPPI/UFAC", subtitulo))
+    elementos.append(Paragraph("Sistema de Controle Financeiro — PROPI/UFAC", subtitulo))
 
     elementos.append(Paragraph("Dados do projeto", secao))
     dados_projeto = [
@@ -178,7 +272,9 @@ def relatorio_projeto(projeto_id):
 def relatorio_alocacao(alocacao_id):
     """Prestação de contas da verba de UMA pessoa dentro do projeto — só
     a alocação principal dela, as sub-alocações e despesas relacionadas
-    (decisão de 19/09/2026: prestação passou a ser por pessoa)."""
+    (decisão de 19/09/2026: prestação passou a ser por pessoa). Os
+    comprovantes de todas as despesas (qualquer status) vêm anexados
+    dentro do próprio PDF (decisão de 19/09/2026)."""
     alocacao = db.session.get(Alocacao, alocacao_id)
     if alocacao is None:
         flash("Alocação não encontrada.", "erro")
@@ -214,7 +310,7 @@ def relatorio_alocacao(alocacao_id):
 
     elementos = []
     elementos.append(Paragraph("Prestação de Contas — Responsável", titulo))
-    elementos.append(Paragraph("Sistema de Controle Financeiro — PROPPI/UFAC", subtitulo))
+    elementos.append(Paragraph("Sistema de Controle Financeiro — PROPI/UFAC", subtitulo))
 
     elementos.append(Paragraph("Dados", secao))
     dados = [
@@ -299,6 +395,15 @@ def relatorio_alocacao(alocacao_id):
     else:
         elementos.append(Paragraph("Nenhuma despesa lançada.", styles["Normal"]))
 
+    elementos.append(Paragraph("Comprovantes anexados", secao))
+    if any(d.comprovante for d in despesas):
+        elementos.append(Paragraph(
+            "Os comprovantes de cada despesa acima estão anexados nas páginas seguintes deste documento, "
+            "cada um precedido de uma página de identificação.", styles["Normal"]
+        ))
+    else:
+        elementos.append(Paragraph("Nenhuma despesa desta verba tem comprovante anexado.", styles["Normal"]))
+
     elementos.append(Spacer(1, 24))
     rodape = ParagraphStyle("rodape", parent=styles["Normal"], fontSize=8, textColor=colors.grey)
     agora = datetime.now().strftime("%d/%m/%Y às %H:%M")
@@ -306,6 +411,8 @@ def relatorio_alocacao(alocacao_id):
 
     doc.build(elementos)
     buffer.seek(0)
+
+    buffer = _anexar_comprovantes(buffer, despesas)
 
     nome_arquivo = f"prestacao_contas_{alocacao.usuario.nome.replace(' ', '_')}_{projeto.nome.replace(' ', '_')}.pdf"
     return send_file(buffer, as_attachment=True, download_name=nome_arquivo, mimetype="application/pdf")
@@ -358,7 +465,7 @@ def relatorio_consolidado():
 
     elementos = []
     elementos.append(Paragraph("Relatório Consolidado de Projetos", titulo))
-    elementos.append(Paragraph("Sistema de Controle Financeiro — PROPPI/UFAC", subtitulo))
+    elementos.append(Paragraph("Sistema de Controle Financeiro — PROPI/UFAC", subtitulo))
 
     elementos.append(Paragraph("Resumo geral", secao))
     resumo = [

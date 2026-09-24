@@ -1,10 +1,10 @@
 from decimal import Decimal
 
-from flask import Blueprint, render_template, redirect, url_for, flash
+from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import login_required, current_user
 
 from app.extensions import db
-from app.models import Alocacao, Projeto, Usuario, TipoAlocacao, Despesa, Centro
+from app.models import Alocacao, Projeto, Usuario, TipoAlocacao, Despesa, Centro, SolicitacaoRemanejamento
 from app.alocacoes.forms import (
     NovaAlocacaoPrincipalForm, NovaSubAlocacaoForm, EditarAlocacaoForm,
     TipoAlocacaoForm, ReprovarAlocacaoForm, CentroForm
@@ -235,6 +235,12 @@ def detalhe_responsavel(projeto_id, usuario_id):
         if sub.tipo_alocacao:
             grafico[sub.tipo_alocacao.nome] = grafico.get(sub.tipo_alocacao.nome, Decimal("0")) + sub.valor_alocado
 
+    remanejamentos = (
+        SolicitacaoRemanejamento.query.filter_by(projeto_id=projeto.id, solicitado_por_id=usuario_id)
+        .order_by(SolicitacaoRemanejamento.criado_em.desc())
+        .all()
+    )
+
     return render_template(
         "alocacoes/detalhe_responsavel.html",
         projeto=projeto,
@@ -243,6 +249,7 @@ def detalhe_responsavel(projeto_id, usuario_id):
         alocacoes_principais=alocacoes_principais,
         alocacao_principal=alocacao_principal,
         despesas=despesas,
+        remanejamentos=remanejamentos,
         valor_total=valor_total,
         total_alocado=total_alocado,
         saldo_alocavel=saldo_alocavel,
@@ -333,74 +340,90 @@ def alocacoes_pendentes():
 
     alocacoes = Alocacao.query.filter_by(status="pendente").order_by(Alocacao.usuario_id, Alocacao.id).all()
 
+    # Saldo da alocação principal (rubrica-mãe) SEM contar este pedido —
+    # dá pro admin ver se há espaço orçamental antes de aprovar, sem
+    # incluir o próprio valor pedido no cálculo.
+    saldos_pai = {
+        a.id: _saldo_disponivel_alocacao_principal(a.pai, sub_alocacao_ignorar_id=a.id)
+        for a in alocacoes
+    }
+
     agrupado = {}
     for a in alocacoes:
         grupo = agrupado.setdefault(a.usuario_id, {"usuario": a.usuario, "alocacoes": [], "total": Decimal("0")})
         grupo["alocacoes"].append(a)
         grupo["total"] += a.valor_alocado
 
-    return render_template("alocacoes/alocacoes_pendentes.html", agrupado=agrupado)
+    return render_template("alocacoes/alocacoes_pendentes.html", agrupado=agrupado, saldos_pai=saldos_pai)
 
 
-@alocacoes_bp.route("/alocacoes/pendentes/usuario/<int:usuario_id>/aprovar-tudo", methods=["POST"])
+@alocacoes_bp.route("/alocacoes/pendentes/aprovar-selecionadas", methods=["POST"])
 @login_required
-def aprovar_todas_pendentes(usuario_id):
+def aprovar_selecionadas():
     if not _somente_administrador():
         return redirect(url_for("projetos.listar_projetos"))
 
-    pendentes = Alocacao.query.filter_by(status="pendente", usuario_id=usuario_id).all()
-    if pendentes:
-        primeiro_projeto_id = pendentes[0].projeto_id
-        for alocacao in pendentes:
-            alocacao.status = "aprovada"
-            alocacao.motivo_reprovacao = None
+    ids = request.form.getlist("alocacao_ids", type=int)
+    alocacoes = Alocacao.query.filter(Alocacao.id.in_(ids), Alocacao.status == "pendente").all() if ids else []
 
-        from app.notificacoes.servicos import notificar_usuario
+    if not alocacoes:
+        flash("Nenhuma alocação válida selecionada.", "erro")
+        return redirect(url_for("alocacoes.alocacoes_pendentes"))
+
+    from app.notificacoes.servicos import notificar_usuario
+    por_usuario = {}
+    for alocacao in alocacoes:
+        alocacao.status = "aprovada"
+        alocacao.motivo_reprovacao = None
+        por_usuario.setdefault(alocacao.usuario_id, []).append(alocacao)
+
+    for usuario_id, itens in por_usuario.items():
         notificar_usuario(
             usuario_id,
-            f"{len(pendentes)} alocação(ões) sua(s) foram aprovadas.",
-            link=url_for("alocacoes.detalhe_responsavel", projeto_id=primeiro_projeto_id, usuario_id=usuario_id),
+            f"{len(itens)} alocação(ões) sua(s) foram aprovadas.",
+            link=url_for("alocacoes.detalhe_responsavel", projeto_id=itens[0].projeto_id, usuario_id=usuario_id),
         )
 
-        db.session.commit()
-        flash(f"{len(pendentes)} alocação(ões) aprovada(s) com sucesso.", "sucesso")
-
+    db.session.commit()
+    flash(f"{len(alocacoes)} alocação(ões) aprovada(s) com sucesso.", "sucesso")
     return redirect(url_for("alocacoes.alocacoes_pendentes"))
 
 
-@alocacoes_bp.route("/alocacoes/pendentes/usuario/<int:usuario_id>/reprovar-tudo", methods=["GET", "POST"])
+@alocacoes_bp.route("/alocacoes/pendentes/reprovar-selecionadas", methods=["POST"])
 @login_required
-def reprovar_todas_pendentes(usuario_id):
+def reprovar_selecionadas():
     if not _somente_administrador():
         return redirect(url_for("projetos.listar_projetos"))
 
-    usuario = db.session.get(Usuario, usuario_id)
-    pendentes = Alocacao.query.filter_by(status="pendente", usuario_id=usuario_id).order_by(Alocacao.id).all()
-    if usuario is None or not pendentes:
-        flash("Não há alocações pendentes para este usuário.", "erro")
+    ids = request.form.getlist("alocacao_ids", type=int)
+    motivo = (request.form.get("motivo") or "").strip()
+
+    if not motivo:
+        flash("Informe o motivo da reprovação.", "erro")
         return redirect(url_for("alocacoes.alocacoes_pendentes"))
 
-    form = ReprovarAlocacaoForm()
-    if form.validate_on_submit():
-        primeiro_projeto_id = pendentes[0].projeto_id
-        for alocacao in pendentes:
-            alocacao.status = "reprovada"
-            alocacao.motivo_reprovacao = form.motivo.data
+    alocacoes = Alocacao.query.filter(Alocacao.id.in_(ids), Alocacao.status == "pendente").all() if ids else []
+    if not alocacoes:
+        flash("Nenhuma alocação válida selecionada.", "erro")
+        return redirect(url_for("alocacoes.alocacoes_pendentes"))
 
-        from app.notificacoes.servicos import notificar_usuario
+    from app.notificacoes.servicos import notificar_usuario
+    por_usuario = {}
+    for alocacao in alocacoes:
+        alocacao.status = "reprovada"
+        alocacao.motivo_reprovacao = motivo
+        por_usuario.setdefault(alocacao.usuario_id, []).append(alocacao)
+
+    for usuario_id, itens in por_usuario.items():
         notificar_usuario(
             usuario_id,
-            f"{len(pendentes)} alocação(ões) sua(s) foram reprovadas: {form.motivo.data}",
-            link=url_for("alocacoes.detalhe_responsavel", projeto_id=primeiro_projeto_id, usuario_id=usuario_id),
+            f"{len(itens)} alocação(ões) sua(s) foram reprovadas: {motivo}",
+            link=url_for("alocacoes.detalhe_responsavel", projeto_id=itens[0].projeto_id, usuario_id=usuario_id),
         )
 
-        db.session.commit()
-        flash(f"{len(pendentes)} alocação(ões) reprovada(s).", "sucesso")
-        return redirect(url_for("alocacoes.alocacoes_pendentes"))
-
-    return render_template(
-        "alocacoes/reprovar_todas_pendentes.html", form=form, usuario=usuario, pendentes=pendentes
-    )
+    db.session.commit()
+    flash(f"{len(alocacoes)} alocação(ões) reprovada(s).", "sucesso")
+    return redirect(url_for("alocacoes.alocacoes_pendentes"))
 
 
 @alocacoes_bp.route("/alocacoes/<int:alocacao_id>/aprovar", methods=["POST"])
