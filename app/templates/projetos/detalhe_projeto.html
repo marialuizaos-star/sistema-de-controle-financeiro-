@@ -1,5 +1,5 @@
 {% extends "base_app.html" %}
-{% block titulo %}{{ projeto.nome }} — SCF PROPPI{% endblock %}
+{% block titulo %}{{ projeto.nome }} — SFC{% endblock %}
 {% block conteudo %}
 {% set cor_status = {"ativo": "verde", "pendente_aprovacao": "laranja", "reprovado": "vermelho", "inativo": "cinza", "encerrado": "cinza"}.get(projeto.status, "cinza") %}
 

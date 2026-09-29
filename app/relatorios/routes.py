@@ -168,7 +168,7 @@ def relatorio_projeto(projeto_id):
 
     elementos = []
     elementos.append(Paragraph("Prestação de Contas", titulo))
-    elementos.append(Paragraph("Sistema de Controle Financeiro — PROPI/UFAC", subtitulo))
+    elementos.append(Paragraph("Sistema de Controle Financeiro — UFAC", subtitulo))
 
     elementos.append(Paragraph("Dados do projeto", secao))
     dados_projeto = [
@@ -310,7 +310,7 @@ def relatorio_alocacao(alocacao_id):
 
     elementos = []
     elementos.append(Paragraph("Prestação de Contas — Responsável", titulo))
-    elementos.append(Paragraph("Sistema de Controle Financeiro — PROPI/UFAC", subtitulo))
+    elementos.append(Paragraph("Sistema de Controle Financeiro — UFAC", subtitulo))
 
     elementos.append(Paragraph("Dados", secao))
     dados = [
@@ -465,7 +465,7 @@ def relatorio_consolidado():
 
     elementos = []
     elementos.append(Paragraph("Relatório Consolidado de Projetos", titulo))
-    elementos.append(Paragraph("Sistema de Controle Financeiro — PROPI/UFAC", subtitulo))
+    elementos.append(Paragraph("Sistema de Controle Financeiro — UFAC", subtitulo))
 
     elementos.append(Paragraph("Resumo geral", secao))
     resumo = [

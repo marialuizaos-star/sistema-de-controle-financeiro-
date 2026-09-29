@@ -2,7 +2,7 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>{% block titulo %}SCF PROPPI{% endblock %}</title>
+    <title>{% block titulo %}SFC{% endblock %}</title>
     <style>
         :root {
             --navy: #2B3A55;
@@ -202,12 +202,13 @@
 
         .sino-wrapper { position: relative; display: inline-block; }
         .sino-btn {
-            background: rgba(255,255,255,0.12); border: none; border-radius: 999px;
-            width: 36px; height: 36px; cursor: pointer; font-size: 16px; color: #fff;
+            background: rgba(255,255,255,0.16); border: none; border-radius: 999px;
+            width: 36px; height: 36px; cursor: pointer; color: #fff;
             display: inline-flex; align-items: center; justify-content: center; margin: 0;
             position: relative;
         }
-        .sino-btn:hover { background: rgba(255,255,255,0.22); }
+        .sino-btn:hover { background: rgba(255,255,255,0.26); }
+        .sino-btn svg { display: block !important; width: 19px !important; height: 19px !important; }
         .sino-contador {
             position: absolute; top: -3px; right: -3px; background: var(--danger); color: #fff;
             font-size: 10px; font-weight: 700; border-radius: 999px; min-width: 16px; height: 16px;
@@ -216,44 +217,62 @@
         .sino-lista {
             position: absolute; right: 0; top: 44px; background: #fff;
             border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 6px 18px rgba(0,0,0,.12);
-            padding: 8px; width: 320px; max-width: 85vw; z-index: 50; display: none;
+            padding: 0; width: 360px; max-width: 88vw; z-index: 50; display: none;
         }
         .sino-lista.aberto { display: block; }
+        .sino-cabecalho {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 12px 14px; border-bottom: 1px solid var(--border);
+        }
+        .sino-cabecalho-titulo { font-size: 13.5px; font-weight: 700; color: var(--ink); }
+        .sino-cabecalho button {
+            font-size: 11.5px; font-weight: 700; margin: 0; padding: 5px 10px;
+            background: var(--gray-soft); color: var(--muted); border: none; border-radius: 999px; cursor: pointer;
+        }
+        .sino-cabecalho button:hover { background: var(--accent-soft); color: var(--accent); }
+        .sino-cabecalho form { margin: 0; }
+        .sino-lista-itens { max-height: 360px; overflow-y: auto; padding: 6px; }
         .sino-item {
-            display: block; padding: 10px 12px; border-radius: 10px; text-decoration: none;
-            color: var(--ink); font-size: 13px; margin-bottom: 2px;
+            display: flex; gap: 10px; align-items: flex-start; padding: 10px 8px; border-radius: 10px;
+            text-decoration: none; color: var(--ink); font-size: 13px; margin-bottom: 2px; position: relative;
         }
         .sino-item:hover { background: var(--gray-soft); }
         .sino-item.nao-lida { background: var(--accent-soft); }
-        .sino-item-data { font-size: 11px; color: var(--muted); margin-top: 3px; }
-        .sino-vazio { padding: 20px 12px; text-align: center; color: var(--muted); font-size: 13px; }
+        .sino-icone {
+            width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center;
+            justify-content: center; flex-shrink: 0; margin-top: 1px;
+        }
+        .sino-item-corpo { flex: 1; min-width: 0; }
+        .sino-item-titulo { font-weight: 700; font-size: 12.5px; }
+        .sino-item-texto { margin-top: 2px; line-height: 1.35; color: var(--ink); }
+        .sino-item-data { font-size: 11px; color: var(--muted); margin-top: 4px; }
+        .sino-item-acao {
+            display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; font-weight: 700;
+            color: var(--accent); margin-top: 6px;
+        }
+        .sino-item-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); flex-shrink: 0; margin-top: 6px; }
+        .sino-vazio { padding: 30px 12px; text-align: center; color: var(--muted); font-size: 13px; }
         .sino-rodape {
-            display: flex; justify-content: space-between; align-items: center;
-            padding: 8px 6px 2px; border-top: 1px solid var(--border); margin-top: 6px;
+            padding: 8px 14px 12px; border-top: 1px solid var(--border);
         }
-        .sino-rodape a { font-size: 12px; font-weight: 600; }
-        .sino-rodape button {
-            font-size: 12px; font-weight: 600; margin: 0; padding: 4px 10px;
-            background: none; color: var(--muted); border: none; cursor: pointer;
-        }
-        .sino-rodape button:hover { color: var(--accent); }
-        .sino-rodape form { margin: 0; }
+        .sino-rodape a { font-size: 12.5px; font-weight: 700; }
     </style>
 </head>
 <body>
+{% import "_macros.html" as macros %}
 <header class="app-header">
     <div class="app-header-left">
         <div class="app-logo">
             <img src="{{ url_for('static', filename='img/ufac-logo.png') }}" alt="Logo UFAC">
         </div>
         <div>
-            <div class="app-title">SCF PROPPI</div>
+            <div class="app-title">SFC</div>
             <div class="app-subtitle">UFAC — Pró-Reitoria de Pesquisa</div>
         </div>
     </div>
     <nav class="app-nav">
         <a class="app-nav-link {{ 'active' if request.endpoint == 'auth.painel' else '' }}" href="{{ url_for('auth.painel') }}">Início</a>
-        <a class="app-nav-link {{ 'active' if request.endpoint in ['projetos.listar_projetos','projetos.novo_projeto','projetos.editar_projeto','projetos.detalhe_projeto','projetos.solicitar_projeto','projetos.projetos_pendentes','projetos.reprovar_projeto'] else '' }}" href="{{ url_for('projetos.listar_projetos') }}">Projetos</a>
+        <a class="app-nav-link {{ 'active' if request.endpoint in ['projetos.listar_projetos','projetos.novo_projeto','projetos.editar_projeto','projetos.detalhe_projeto','projetos.reprovar_projeto'] else '' }}" href="{{ url_for('projetos.listar_projetos') }}">Projetos</a>
         {% if current_user.papel == "administrador" %}
         <a class="app-nav-link {{ 'active' if request.endpoint in ['auth.listar_usuarios','auth.editar_usuario','auth.cadastro'] else '' }}" href="{{ url_for('auth.listar_usuarios') }}">Usuários</a>
         {% endif %}
@@ -263,30 +282,72 @@
     <div class="app-user">
         <div class="sino-wrapper">
             <button type="button" class="sino-btn" aria-label="Notificações">
-                🔔
+                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
                 {% if total_notificacoes_nao_lidas > 0 %}
                 <span class="sino-contador">{{ total_notificacoes_nao_lidas if total_notificacoes_nao_lidas <= 9 else '9+' }}</span>
                 {% endif %}
             </button>
             <div class="sino-lista">
-                {% if notificacoes_recentes %}
-                    {% for notificacao in notificacoes_recentes %}
-                    <a href="{{ url_for('notificacoes.abrir', notificacao_id=notificacao.id) }}" class="sino-item {{ '' if notificacao.lida else 'nao-lida' }}">
-                        <div>{{ notificacao.mensagem }}</div>
-                        <div class="sino-item-data">{{ notificacao.criado_em.strftime('%d/%m/%Y %H:%M') }}</div>
-                    </a>
-                    {% endfor %}
-                {% else %}
-                <div class="sino-vazio">Nenhuma notificação ainda.</div>
-                {% endif %}
+                {% if current_user.papel == "administrador" %}
+                <div class="sino-cabecalho">
+                    <span class="sino-cabecalho-titulo">Pendências para Aprovação{% if total_notificacoes_nao_lidas > 0 %} ({{ total_notificacoes_nao_lidas }}){% endif %}</span>
+                    {% if total_notificacoes_nao_lidas > 0 %}
+                    <form method="POST" action="{{ url_for('notificacoes.marcar_todas_lidas') }}">
+                        <button type="submit">Marcar como lidas</button>
+                    </form>
+                    {% endif %}
+                </div>
+                <div class="sino-lista-itens">
+                    {% if notificacoes_recentes %}
+                        {% for notificacao in notificacoes_recentes %}
+                        <a href="{{ url_for('notificacoes.abrir', notificacao_id=notificacao.id) }}" class="sino-item {{ '' if notificacao.lida else 'nao-lida' }}">
+                            {{ macros.icone_notificacao(notificacao.tipo) }}
+                            <div class="sino-item-corpo">
+                                <div class="sino-item-texto">{{ notificacao.mensagem }}</div>
+                                <div class="sino-item-data" title="{{ notificacao.criado_em.strftime('%d/%m/%Y %H:%M') }}">{{ notificacao.criado_em | tempo_relativo }}</div>
+                                <span class="sino-item-acao">Analisar
+                                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                                </span>
+                            </div>
+                            {% if not notificacao.lida %}<span class="sino-item-dot"></span>{% endif %}
+                        </a>
+                        {% endfor %}
+                    {% else %}
+                    <div class="sino-vazio">Nenhuma pendência no momento.</div>
+                    {% endif %}
+                </div>
                 <div class="sino-rodape">
-                    <a href="{{ url_for('notificacoes.listar') }}">Ver todas</a>
+                    <a href="{{ url_for('notificacoes.listar') }}">Ver todas as pendências da PROPI</a>
+                </div>
+                {% else %}
+                <div class="sino-cabecalho">
+                    <span class="sino-cabecalho-titulo">Notificações{% if total_notificacoes_nao_lidas > 0 %} ({{ total_notificacoes_nao_lidas }} novas){% endif %}</span>
                     {% if total_notificacoes_nao_lidas > 0 %}
                     <form method="POST" action="{{ url_for('notificacoes.marcar_todas_lidas') }}">
                         <button type="submit">Marcar todas como lidas</button>
                     </form>
                     {% endif %}
                 </div>
+                <div class="sino-lista-itens">
+                    {% if notificacoes_recentes %}
+                        {% for notificacao in notificacoes_recentes %}
+                        <a href="{{ url_for('notificacoes.abrir', notificacao_id=notificacao.id) }}" class="sino-item {{ '' if notificacao.lida else 'nao-lida' }}">
+                            {{ macros.icone_notificacao(notificacao.tipo) }}
+                            <div class="sino-item-corpo">
+                                <div class="sino-item-texto">{{ notificacao.mensagem }}</div>
+                                <div class="sino-item-data" title="{{ notificacao.criado_em.strftime('%d/%m/%Y %H:%M') }}">{{ notificacao.criado_em | tempo_relativo }}</div>
+                            </div>
+                            {% if not notificacao.lida %}<span class="sino-item-dot"></span>{% endif %}
+                        </a>
+                        {% endfor %}
+                    {% else %}
+                    <div class="sino-vazio">Nenhuma notificação ainda.</div>
+                    {% endif %}
+                </div>
+                <div class="sino-rodape">
+                    <a href="{{ url_for('notificacoes.listar') }}">Ver histórico completo</a>
+                </div>
+                {% endif %}
             </div>
         </div>
         {% set partes_nome = current_user.nome.split() %}
@@ -423,12 +484,6 @@
         });
     });
 
-    // Evita duplo clique em ações importantes: ao enviar qualquer formulário,
-    // desabilita o(s) botão(ões) de envio e troca o texto, até a página
-    // recarregar. Forms com upload de arquivo (comprovante, instruções,
-    // documentos) ganham um aviso extra, já que podem demorar mais.
-    // Fica por último no script pra rodar depois de qualquer conversão de
-    // valor (máscara de moeda) que também acontece no evento "submit".
     document.querySelectorAll('form').forEach(function (form) {
         form.addEventListener('submit', function () {
             var temArquivo = form.enctype === 'multipart/form-data';

@@ -272,7 +272,7 @@ def recuperar_senha():
             token = usuario.gerar_token_redefinicao()
             link = url_for("auth.redefinir_senha", token=token, _external=True)
             msg = Message(
-                subject="Redefinição de senha — SCF PROPPI",
+                subject="Redefinição de senha — SFC",
                 recipients=[usuario.email],
                 body=f"Olá, {usuario.nome}.\n\nPara redefinir sua senha, acesse o link abaixo (válido por 1 hora):\n{link}\n\nSe você não solicitou isso, ignore este e-mail.",
             )

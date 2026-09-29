@@ -1,46 +1,72 @@
 {% extends "base_app.html" %}
-{% block titulo %}Notificações — SCF PROPPI{% endblock %}
+{% import "_macros.html" as macros %}
+{% block titulo %}Notificações — SFC{% endblock %}
 {% block conteudo %}
+<style>
+    .escondida { display: none; }
+    .notif-linha {
+        display: flex; gap: 12px; align-items: flex-start; padding: 14px 6px;
+        border-bottom: 1px solid var(--border); text-decoration: none; color: var(--ink);
+        position: relative; border-left: 3px solid transparent;
+    }
+    .notif-linha:hover { background: var(--gray-soft); }
+    .notif-linha.nao-lida { border-left-color: var(--accent); background: #FBFBFF; }
+    .notif-corpo { flex: 1; min-width: 0; }
+    .notif-texto { font-size: 14px; line-height: 1.4; }
+    .notif-rodape { display: flex; align-items: center; gap: 10px; margin-top: 5px; }
+    .notif-data { font-size: 12px; color: var(--muted); }
+</style>
+
 <a href="{{ url_for('auth.painel') }}" class="btn-link-secundario" style="margin-bottom:14px; display:inline-block; padding:6px 14px; font-size:12px;">← Início</a>
 
 <div class="card">
     <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
-        <h2 style="margin:0;">Notificações</h2>
+        <h2 style="margin:0;">{{ "Pendências para Aprovação" if current_user.papel == "administrador" else "Notificações" }}</h2>
         {% if total_notificacoes_nao_lidas > 0 %}
         <form method="POST" action="{{ url_for('notificacoes.marcar_todas_lidas') }}">
             <button type="submit" class="btn-sm">Marcar todas como lidas</button>
         </form>
         {% endif %}
     </div>
-    <table style="margin-top:14px;">
-        <tr>
-            <th>Mensagem</th>
-            <th>Data</th>
-            <th>Status</th>
-            <th style="text-align:right">Ações</th>
-        </tr>
+
+    {% if current_user.papel == "administrador" %}
+    <div class="pill-tabs" id="filtros-categoria">
+        <button type="button" class="pill-tab active" data-categoria="todas" onclick="filtrarPorCategoria('todas')">Todas</button>
+        <button type="button" class="pill-tab" data-categoria="prestacoes" onclick="filtrarPorCategoria('prestacoes')">Prestações</button>
+        <button type="button" class="pill-tab" data-categoria="remanejamentos" onclick="filtrarPorCategoria('remanejamentos')">Remanejamentos</button>
+        <button type="button" class="pill-tab" data-categoria="alocacoes" onclick="filtrarPorCategoria('alocacoes')">Alocações</button>
+    </div>
+    {% endif %}
+
+    <div style="margin-top:8px;">
         {% for notificacao in notificacoes %}
-        <tr {% if notificacao.link %}class="linha-clicavel" data-href="{{ url_for('notificacoes.abrir', notificacao_id=notificacao.id) }}"{% endif %}>
-            <td>{{ notificacao.mensagem }}</td>
-            <td class="mono">{{ notificacao.criado_em.strftime('%d/%m/%Y %H:%M') }}</td>
-            <td>
-                {% if notificacao.lida %}
-                <span class="badge badge-cinza"><span class="badge-dot"></span>Lida</span>
-                {% else %}
-                <span class="badge badge-indigo"><span class="badge-dot"></span>Nova</span>
-                {% endif %}
-            </td>
-            <td style="text-align:right" class="impede-clique-linha">
-                {% if not notificacao.lida %}
-                <form method="POST" action="{{ url_for('notificacoes.marcar_lida', notificacao_id=notificacao.id) }}" style="display:inline">
-                    <button type="submit" class="btn-sm">Marcar como lida</button>
-                </form>
-                {% endif %}
-            </td>
-        </tr>
+        <a href="{{ url_for('notificacoes.abrir', notificacao_id=notificacao.id) }}"
+           class="notif-linha notif-item {{ 'nao-lida' if not notificacao.lida else '' }}"
+           data-categoria="{{ macros.categoria_notificacao(notificacao.tipo) }}">
+            {{ macros.icone_notificacao(notificacao.tipo) }}
+            <div class="notif-corpo">
+                <div class="notif-texto">{{ notificacao.mensagem }}</div>
+                <div class="notif-rodape">
+                    <span class="notif-data" title="{{ notificacao.criado_em.strftime('%d/%m/%Y %H:%M') }}">{{ notificacao.criado_em | tempo_relativo }}</span>
+                    {% if not notificacao.lida %}<span class="badge badge-indigo"><span class="badge-dot"></span>Nova</span>{% endif %}
+                </div>
+            </div>
+        </a>
         {% else %}
-        <tr><td colspan="4" class="link-muted">Nenhuma notificação ainda.</td></tr>
+        <p class="link-muted" style="padding:20px 6px; text-align:center;">Nenhuma notificação ainda.</p>
         {% endfor %}
-    </table>
+    </div>
 </div>
+
+<script>
+    function filtrarPorCategoria(categoria) {
+        document.querySelectorAll('#filtros-categoria .pill-tab').forEach(function (botao) {
+            botao.classList.toggle('active', botao.getAttribute('data-categoria') === categoria);
+        });
+        document.querySelectorAll('.notif-item').forEach(function (item) {
+            var bate = categoria === 'todas' || item.getAttribute('data-categoria') === categoria;
+            item.classList.toggle('escondida', !bate);
+        });
+    }
+</script>
 {% endblock %}

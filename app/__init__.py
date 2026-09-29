@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 from flask import Flask, render_template, redirect, url_for, flash
 from flask_login import current_user
 from flask_wtf.csrf import CSRFError
@@ -66,6 +68,33 @@ def create_app(config_class=Config):
 
     app.jinja_env.filters["rotulo"] = rotulo
 
+    def tempo_relativo(dt):
+        """Formato curto tipo 'Há 20 min', 'Ontem', 'Há 5 dias' — cai pra
+        data completa (dd/mm/aaaa) depois de uma semana. A data/hora exata
+        continua disponível no atributo title do elemento (tooltip)."""
+        if dt is None:
+            return ""
+        agora = datetime.now(timezone.utc)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        segundos = (agora - dt).total_seconds()
+        if segundos < 60:
+            return "Agora"
+        minutos = int(segundos // 60)
+        if minutos < 60:
+            return f"Há {minutos} min"
+        horas = int(minutos // 60)
+        if horas < 24:
+            return f"Há {horas} h"
+        dias = int(horas // 24)
+        if dias == 1:
+            return "Ontem"
+        if dias < 7:
+            return f"Há {dias} dias"
+        return dt.strftime("%d/%m/%Y")
+
+    app.jinja_env.filters["tempo_relativo"] = tempo_relativo
+
     @app.context_processor
     def injetar_notificacoes():
         from app.models import Notificacao
@@ -94,9 +123,6 @@ def create_app(config_class=Config):
 
     @app.errorhandler(CSRFError)
     def erro_csrf(e):
-        # Acontece quando um formulário fica aberto tempo demais (token
-        # expira) ou a sessão foi invalidada — em vez do erro técnico do
-        # Flask-WTF, avisa a pessoa e devolve pra um lugar seguro.
         flash("O formulário expirou (ficou aberto por muito tempo). Tente novamente.", "erro")
         if current_user.is_authenticated:
             return redirect(url_for("auth.painel"))

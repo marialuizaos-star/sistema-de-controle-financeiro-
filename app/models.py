@@ -310,6 +310,7 @@ class Notificacao(db.Model):
     link = db.Column(db.String(255), nullable=True)
     lida = db.Column(db.Boolean, nullable=False, default=False)
     criado_em = db.Column(db.DateTime(timezone=True), default=agora_utc, nullable=False)
+    tipo = db.Column(db.String(30), nullable=True)
 
     usuario = db.relationship("Usuario")
 
